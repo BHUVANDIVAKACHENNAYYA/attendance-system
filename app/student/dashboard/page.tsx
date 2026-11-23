@@ -77,6 +77,8 @@ export default function StudentDashboardPage() {
         session={session}
         existingRecord={myRecord}
         studentName={user?.name || 'Student'}
+        studentPhoto={user?.photo_url}
+        studentUsn={user?.usn}
         onAttendanceMarked={loadData}
       />
 

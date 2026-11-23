@@ -20,6 +20,8 @@ interface AttendanceMarkCardProps {
   session: AttendanceSession | null;
   existingRecord: AttendanceRecord | null;
   studentName: string;
+  studentPhoto?: string | null;
+  studentUsn?: string | null;
   onAttendanceMarked: () => void;
 }
 
@@ -27,9 +29,12 @@ export function AttendanceMarkCard({
   session,
   existingRecord,
   studentName,
+  studentPhoto,
+  studentUsn,
   onAttendanceMarked,
 }: AttendanceMarkCardProps) {
   const [loading, setLoading] = useState(false);
+  const [liveCoords, setLiveCoords] = useState<{ lat: number; lon: number; acc: number } | null>(null);
   const [verificationResult, setVerificationResult] = useState<AttendanceVerificationResponse | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [gpsStep, setGpsStep] = useState<string | null>(null);
@@ -53,7 +58,12 @@ export function AttendanceMarkCard({
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        setGpsStep('Verifying location with college attendance server...');
+        setLiveCoords({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+          acc: Math.round(position.coords.accuracy),
+        });
+        setGpsStep('Verifying live GPS coordinates with college server...');
 
         const payload = {
           sessionId: session.id,
@@ -129,7 +139,7 @@ export function AttendanceMarkCard({
       <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600" />
 
       <CardContent className="p-6 sm:p-8 space-y-6">
-        {/* Student Greeting */}
+        {/* Student Greeting & Photo */}
         <div>
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase tracking-wider font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">
@@ -145,9 +155,29 @@ export function AttendanceMarkCard({
             </span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2">
-            {greeting}, <span className="text-indigo-600">{studentName}</span>
-          </h2>
+          <div className="flex items-center gap-3.5 mt-3">
+            {studentPhoto ? (
+              <img
+                src={studentPhoto}
+                alt={studentName}
+                className="w-14 h-14 rounded-full object-cover border-2 border-indigo-200 shadow-sm shrink-0"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xl shrink-0">
+                {studentName.charAt(0)}
+              </div>
+            )}
+            <div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-tight">
+                {greeting}, <span className="text-indigo-600">{studentName}</span>
+              </h2>
+              {studentUsn && (
+                <p className="text-xs font-mono text-slate-500 mt-0.5">
+                  USN: <strong className="text-slate-700">{studentUsn}</strong>
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Active Session Card Info */}

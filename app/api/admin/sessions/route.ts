@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/get-user';
 import { sessionSchema } from '@/lib/validation';
-import { isUsingMockData, mockStore } from '@/lib/supabase/mock-store';
+import { isUsingMockData, mockStore, saveStore } from '@/lib/supabase/mock-store';
 import { createClientServer } from '@/lib/supabase/server';
 import { getServiceRoleClient } from '@/lib/supabase/admin';
 import { AttendanceSession } from '@/types';
@@ -83,6 +83,8 @@ export async function POST(request: NextRequest) {
           metadata: { subject: mockStore.sessions[sessionIndex].subject },
           created_at: now,
         });
+
+        saveStore();
 
         return NextResponse.json({
           success: true,
@@ -166,6 +168,8 @@ export async function POST(request: NextRequest) {
         metadata: { subject, class_name, attendance_date },
         created_at: new Date().toISOString(),
       });
+
+      saveStore();
 
       return NextResponse.json({
         success: true,

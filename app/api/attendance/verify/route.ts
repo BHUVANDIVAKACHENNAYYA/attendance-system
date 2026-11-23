@@ -3,7 +3,7 @@ import { attendanceVerificationSchema } from '@/lib/validation';
 import { calculateHaversineDistance } from '@/lib/gps/haversine';
 import { validateGpsAccuracy } from '@/lib/gps/accuracy';
 import { getAuthenticatedUser } from '@/lib/auth/get-user';
-import { isUsingMockData, mockStore } from '@/lib/supabase/mock-store';
+import { isUsingMockData, mockStore, saveStore } from '@/lib/supabase/mock-store';
 import { getServiceRoleClient } from '@/lib/supabase/admin';
 import { createClientServer } from '@/lib/supabase/server';
 import { AttendanceRecord, AttendanceStatus, AuditLog } from '@/types';
@@ -297,6 +297,7 @@ export async function POST(request: NextRequest) {
         },
         created_at: markedAtIso,
       });
+      saveStore();
     } else {
       const supabase = getServiceRoleClient() || createClientServer();
       const { error: insertErr } = await supabase.from('attendance_records').insert(newRecord);

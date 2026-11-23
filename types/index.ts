@@ -8,6 +8,8 @@ export interface Profile {
   usn?: string | null;
   semester?: string | null;
   section?: string | null;
+  photo_url?: string | null;
+  password?: string;
   active: boolean;
   created_at?: string;
   updated_at?: string;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/get-user';
 import { locationSchema } from '@/lib/validation';
-import { isUsingMockData, mockStore } from '@/lib/supabase/mock-store';
+import { isUsingMockData, mockStore, saveStore } from '@/lib/supabase/mock-store';
 import { createClientServer } from '@/lib/supabase/server';
 import { getServiceRoleClient } from '@/lib/supabase/admin';
 import { AttendanceLocation } from '@/types';
@@ -85,6 +85,8 @@ export async function POST(request: NextRequest) {
           created_at: now,
         });
 
+        saveStore();
+
         return NextResponse.json({
           success: true,
           message: 'Location updated successfully',
@@ -114,6 +116,8 @@ export async function POST(request: NextRequest) {
         metadata: { name, latitude, longitude, radius_meters },
         created_at: now,
       });
+
+      saveStore();
 
       return NextResponse.json({
         success: true,

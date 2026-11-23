@@ -22,10 +22,10 @@ import { AttendanceSession } from '@/types';
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({
-    totalStudents: 17,
+    totalStudents: 0,
     presentCount: 0,
     lateCount: 0,
-    notMarkedCount: 17,
+    notMarkedCount: 0,
   });
 
   const [activeSession, setActiveSession] = useState<AttendanceSession | null>(null);
@@ -155,7 +155,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Active Session Highlight Bar */}
-        {activeSession && (
+        {activeSession ? (
           <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-1.5 font-bold text-slate-900">
@@ -190,6 +190,19 @@ export default function AdminDashboardPage() {
             >
               Status: {activeSession.status}
             </span>
+          </div>
+        ) : (
+          <div className="mt-5 pt-4 border-t border-slate-100 text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-slate-400" />
+              <span>No attendance session currently active.</span>
+            </div>
+            <Link
+              href="/admin/sessions"
+              className="text-indigo-600 font-semibold hover:underline inline-flex items-center gap-1"
+            >
+              Schedule or Start a Session →
+            </Link>
           </div>
         )}
       </div>

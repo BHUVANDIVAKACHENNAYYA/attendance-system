@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/get-user';
 import { manualAttendanceCorrectionSchema } from '@/lib/validation';
-import { isUsingMockData, mockStore } from '@/lib/supabase/mock-store';
+import { isUsingMockData, mockStore, saveStore } from '@/lib/supabase/mock-store';
 import { createClientServer } from '@/lib/supabase/server';
 import { getServiceRoleClient } from '@/lib/supabase/admin';
 import { AttendanceRecord } from '@/types';
@@ -75,6 +75,8 @@ export async function POST(request: NextRequest) {
         },
         created_at: now,
       });
+
+      saveStore();
 
       return NextResponse.json({
         success: true,

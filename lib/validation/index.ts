@@ -58,6 +58,7 @@ export const studentSchema = z.object({
   usn: z.string().min(2, 'USN must be at least 2 characters').max(30),
   semester: z.string().optional().default(''),
   section: z.string().optional().default(''),
+  photo_url: z.string().optional().nullable(),
 });
 
 export const manualAttendanceCorrectionSchema = z.object({

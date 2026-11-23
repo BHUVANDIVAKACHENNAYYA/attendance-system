@@ -122,7 +122,7 @@ export function Navbar() {
                 >
                   <span className="flex items-center gap-1.5">
                     <Users className="w-4 h-4" />
-                    Students (17)
+                    Students
                   </span>
                 </Link>
                 <Link
@@ -175,6 +175,18 @@ export function Navbar() {
           <div className="flex items-center space-x-3">
             {user ? (
               <div className="flex items-center gap-3">
+                {user.photo_url ? (
+                  <img
+                    src={user.photo_url}
+                    alt={user.name}
+                    className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-xs"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
+                    {user.name.charAt(0)}
+                  </div>
+                )}
+
                 <div className="text-right hidden sm:block">
                   <div className="text-xs font-semibold text-slate-800 leading-none">
                     {user.name}
@@ -193,15 +205,6 @@ export function Navbar() {
                 >
                   {user.role}
                 </span>
-
-                <Link
-                  href="/login"
-                  title="Switch User / Demo Accounts"
-                  className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-indigo-600 text-xs font-medium transition flex items-center gap-1"
-                >
-                  <UserCheck className="w-4 h-4 text-indigo-600" />
-                  <span className="hidden lg:inline">Switch</span>
-                </Link>
 
                 <button
                   onClick={handleLogout}

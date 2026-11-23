@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Users,
   UserPlus,
@@ -13,6 +13,9 @@ import {
   Power,
   Shield,
   FileSpreadsheet,
+  Camera,
+  Trash2,
+  User,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,8 +36,11 @@ export default function AdminStudentsPage() {
   const [usn, setUsn] = useState('');
   const [semester, setSemester] = useState('5');
   const [section, setSection] = useState('A');
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // CSV import
   const [csvText, setCsvText] = useState('');
@@ -66,6 +72,7 @@ export default function AdminStudentsPage() {
     setUsn('');
     setSemester('5');
     setSection('A');
+    setPhotoUrl(null);
     setFormError(null);
     setModalOpen(true);
   };
@@ -77,8 +84,63 @@ export default function AdminStudentsPage() {
     setUsn(st.usn || '');
     setSemester(st.semester || '5');
     setSection(st.section || 'A');
+    setPhotoUrl(st.photo_url || null);
     setFormError(null);
     setModalOpen(true);
+  };
+
+  // Process image and convert to compact Base64 Data URL
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setFormError('Please select a valid image file (JPG, PNG, or WEBP).');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // Downscale to max 300x300 for optimal storage & speed
+        const canvas = document.createElement('canvas');
+        const maxSize = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          setPhotoUrl(dataUrl);
+          setFormError(null);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleSaveStudent = async (e: React.FormEvent) => {
@@ -97,6 +159,7 @@ export default function AdminStudentsPage() {
           usn,
           semester,
           section,
+          photo_url: photoUrl,
         }),
       });
 
@@ -163,16 +226,6 @@ export default function AdminStudentsPage() {
     }
   };
 
-  const handleLoadSampleCsv = async () => {
-    try {
-      const res = await fetch('/sample-students-17.csv');
-      const text = await res.text();
-      setCsvText(text);
-    } catch {
-      console.error('Failed to load sample csv');
-    }
-  };
-
   const filteredStudents = students.filter(
     (st) =>
       st.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -189,7 +242,7 @@ export default function AdminStudentsPage() {
             Student Roster ({students.length})
           </h1>
           <p className="text-xs text-slate-500">
-            Manage student registrations, USN mappings, and active statuses
+            Manage real enrolled students, photos, USN mappings, and active statuses
           </p>
         </div>
 
@@ -197,14 +250,11 @@ export default function AdminStudentsPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => {
-              setCsvModalOpen(true);
-              handleLoadSampleCsv();
-            }}
+            onClick={() => setCsvModalOpen(true)}
             className="gap-1.5 text-xs"
           >
             <Upload className="w-3.5 h-3.5 text-indigo-600" />
-            Bulk CSV Import (17 Students)
+            Bulk CSV Import
           </Button>
 
           <Button size="sm" variant="primary" onClick={handleOpenAdd} className="gap-1.5 text-xs">
@@ -238,7 +288,7 @@ export default function AdminStudentsPage() {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider">
                 <th className="py-3 px-4 w-12 text-center">#</th>
-                <th className="py-3 px-4">Student Name</th>
+                <th className="py-3 px-4">Student</th>
                 <th className="py-3 px-4">USN</th>
                 <th className="py-3 px-4">Email</th>
                 <th className="py-3 px-4">Class</th>
@@ -247,81 +297,159 @@ export default function AdminStudentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {filteredStudents.map((st, idx) => (
-                <tr key={st.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3 px-4 text-center font-mono text-slate-400">{idx + 1}</td>
-                  <td className="py-3 px-4 font-bold text-slate-900">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
-                        {st.name.charAt(0)}
+              {filteredStudents.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <User className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                    {students.length === 0 ? (
+                      <div>
+                        <p className="font-semibold text-slate-700">No students registered yet.</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Click "Add Single Student" above to enroll your first student with their photo!
+                        </p>
                       </div>
-                      <span>{st.name}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 font-mono font-bold text-indigo-600">{st.usn || '--'}</td>
-                  <td className="py-3 px-4 text-slate-500 font-mono">{st.email}</td>
-                  <td className="py-3 px-4 text-slate-600">
-                    Sem {st.semester || '5'} - Sec {st.section || 'A'}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        st.active
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-rose-100 text-rose-800'
-                      }`}
-                    >
-                      {st.active ? 'ACTIVE' : 'DEACTIVATED'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => handleOpenEdit(st)}
-                        className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition"
-                        title="Edit Student"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleToggleStatus(st.id, st.active)}
-                        className={`p-1.5 rounded transition ${
-                          st.active
-                            ? 'hover:bg-rose-50 text-slate-400 hover:text-rose-600'
-                            : 'hover:bg-emerald-50 text-slate-400 hover:text-emerald-600'
-                        }`}
-                        title={st.active ? 'Deactivate Student' : 'Activate Student'}
-                      >
-                        <Power className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    ) : (
+                      'No matching students found.'
+                    )}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredStudents.map((st, idx) => (
+                  <tr key={st.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-4 text-center font-mono text-slate-400">{idx + 1}</td>
+                    <td className="py-3 px-4 font-bold text-slate-900">
+                      <div className="flex items-center gap-2.5">
+                        {st.photo_url ? (
+                          <img
+                            src={st.photo_url}
+                            alt={st.name}
+                            className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-xs shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
+                            {st.name.charAt(0)}
+                          </div>
+                        )}
+                        <div>
+                          <span>{st.name}</span>
+                          <span className="block text-[10px] text-slate-400 font-normal">
+                            Sem {st.semester || '5'} - Sec {st.section || 'A'}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 font-mono font-bold text-indigo-600">{st.usn || '--'}</td>
+                    <td className="py-3 px-4 text-slate-500 font-mono">{st.email}</td>
+                    <td className="py-3 px-4 text-slate-600">
+                      Sem {st.semester || '5'} - Sec {st.section || 'A'}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          st.active
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-rose-100 text-rose-800'
+                        }`}
+                      >
+                        {st.active ? 'ACTIVE' : 'DEACTIVATED'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleOpenEdit(st)}
+                          className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition"
+                          title="Edit Student & Photo"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleStatus(st.id, st.active)}
+                          className={`p-1.5 rounded transition ${
+                            st.active
+                              ? 'hover:bg-rose-50 text-slate-400 hover:text-rose-600'
+                              : 'hover:bg-emerald-50 text-slate-400 hover:text-emerald-600'
+                          }`}
+                          title={st.active ? 'Deactivate Student' : 'Activate Student'}
+                        >
+                          <Power className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </Card>
 
-      {/* Add / Edit Student Modal */}
+      {/* Add / Edit Student Modal with Photo Upload */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200 space-y-4">
-            <h3 className="font-bold text-slate-900 text-sm">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="font-bold text-slate-900 text-base">
               {editingId ? 'Edit Student Details' : 'Add New Student'}
             </h3>
 
             {formError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700">
-                {formError}
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{formError}</span>
               </div>
             )}
 
-            <form onSubmit={handleSaveStudent} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveStudent} className="space-y-4 text-xs">
+              {/* Photo Upload Section */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center gap-4">
+                <div className="relative w-16 h-16 rounded-full bg-slate-200 border-2 border-indigo-200 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                  {photoUrl ? (
+                    <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-8 h-8 text-slate-400" />
+                  )}
+                </div>
+
+                <div className="space-y-1.5 flex-1">
+                  <div className="font-semibold text-slate-800 text-xs">Student Photo</div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoSelect}
+                      className="hidden"
+                      id="student-photo-file"
+                    />
+                    <label
+                      htmlFor="student-photo-file"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-[11px] font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer shadow-xs transition"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-indigo-600" />
+                      {photoUrl ? 'Change Photo' : 'Upload Photo'}
+                    </label>
+
+                    {photoUrl && (
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md transition"
+                        title="Remove Photo"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-slate-400 block">
+                    JPG, PNG, or Camera capture
+                  </span>
+                </div>
+              </div>
+
               <Input
                 label="Full Name"
                 required
-                placeholder="e.g. Arun Kumar"
+                placeholder="e.g. John Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -329,14 +457,14 @@ export default function AdminStudentsPage() {
                 label="College Email"
                 type="email"
                 required
-                placeholder="e.g. arun.kumar@demo.college.edu"
+                placeholder="e.g. student@college.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
               <Input
                 label="University Seat Number (USN)"
                 required
-                placeholder="e.g. USN001"
+                placeholder="e.g. 1MS21CS001"
                 value={usn}
                 onChange={(e) => setUsn(e.target.value)}
               />
@@ -360,7 +488,7 @@ export default function AdminStudentsPage() {
                   Cancel
                 </Button>
                 <Button size="sm" variant="primary" type="submit" isLoading={formLoading}>
-                  Save Student
+                  {editingId ? 'Update Student' : 'Add Student'}
                 </Button>
               </div>
             </form>
@@ -377,14 +505,6 @@ export default function AdminStudentsPage() {
                 <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
                 Bulk CSV Student Import
               </h3>
-              <a
-                href="/sample-students-17.csv"
-                download
-                className="text-[11px] text-indigo-600 hover:underline flex items-center gap-1 font-semibold"
-              >
-                <Download className="w-3 h-3" />
-                Download Sample CSV
-              </a>
             </div>
 
             <p className="text-xs text-slate-500">
@@ -395,7 +515,7 @@ export default function AdminStudentsPage() {
               rows={8}
               value={csvText}
               onChange={(e) => setCsvText(e.target.value)}
-              placeholder="name,usn,email,semester,section..."
+              placeholder="name,usn,email,semester,section&#10;Alice Smith,USN001,alice@college.edu,5,A&#10;Bob Jones,USN002,bob@college.edu,5,A"
               className="w-full p-3 font-mono text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
 

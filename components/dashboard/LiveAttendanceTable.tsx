@@ -13,6 +13,7 @@ export interface AttendanceRow {
   email: string;
   semester: string;
   section: string;
+  photoUrl?: string | null;
   markedTime: string;
   distance: string;
   rawDistance: number | null;
@@ -166,10 +167,18 @@ export function LiveAttendanceTable({
                 <tr key={row.studentId} className="hover:bg-slate-50/80 transition-colors">
                   <td className="py-3.5 px-4 text-center font-mono text-slate-400">{row.no}</td>
                   <td className="py-3.5 px-4 font-semibold text-slate-900">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-[11px] shrink-0">
-                        {row.name.charAt(0)}
-                      </div>
+                    <div className="flex items-center gap-2.5">
+                      {row.photoUrl ? (
+                        <img
+                          src={row.photoUrl}
+                          alt={row.name}
+                          className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-xs shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
+                          {row.name.charAt(0)}
+                        </div>
+                      )}
                       <div>
                         <span>{row.name}</span>
                         <span className="block text-[10px] text-slate-400 font-normal">

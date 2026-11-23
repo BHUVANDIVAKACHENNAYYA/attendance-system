@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     usn TEXT UNIQUE,
     semester TEXT,
     section TEXT,
+    photo_url TEXT,
     active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -166,7 +167,7 @@ CREATE POLICY "Authenticated users can insert audit logs"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, name, email, role, usn, semester, section)
+  INSERT INTO public.profiles (id, name, email, role, usn, semester, section, photo_url)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
@@ -174,11 +175,13 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'role', 'STUDENT'),
     NEW.raw_user_meta_data->>'usn',
     NEW.raw_user_meta_data->>'semester',
-    NEW.raw_user_meta_data->>'section'
+    NEW.raw_user_meta_data->>'section',
+    NEW.raw_user_meta_data->>'photo_url'
   )
   ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     email = EXCLUDED.email,
+    photo_url = EXCLUDED.photo_url,
     updated_at = now();
   RETURN NEW;
 END;

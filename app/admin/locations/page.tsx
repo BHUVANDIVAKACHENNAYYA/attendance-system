@@ -47,6 +47,17 @@ export default function AdminLocationsPage() {
 
   useEffect(() => {
     fetchLocations();
+    // Try to obtain real device GPS coordinates on mount
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLatitude(Number(pos.coords.latitude.toFixed(6)));
+          setLongitude(Number(pos.coords.longitude.toFixed(6)));
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
   }, []);
 
   const handleSelectToEdit = (loc: AttendanceLocation) => {
@@ -237,37 +248,47 @@ export default function AdminLocationsPage() {
               </p>
 
               <div className="divide-y divide-slate-100">
-                {locations.map((loc) => (
-                  <div key={loc.id} className="py-3 flex items-start justify-between gap-3 group">
-                    <div className="space-y-1">
-                      <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                        <span>{loc.name}</span>
-                      </div>
-                      <div className="text-[11px] font-mono text-slate-500">
-                        {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
-                      </div>
-                      <div className="flex items-center gap-2 text-[10px]">
-                        <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-semibold">
-                          Radius: {loc.radius_meters}m
-                        </span>
-                        <span className="text-slate-400">
-                          Max Acc: {loc.max_accuracy_meters || 100}m
-                        </span>
-                      </div>
-                    </div>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleSelectToEdit(loc)}
-                      className="text-xs h-7 px-2"
-                    >
-                      <Edit2 className="w-3 h-3 mr-1" />
-                      Edit
-                    </Button>
+                {locations.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-xs">
+                    <MapPin className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                    <p className="font-semibold text-slate-700">No classrooms configured yet.</p>
+                    <p className="mt-1">
+                      Click <strong>"Use Current GPS Location"</strong> on the map to save your first classroom!
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  locations.map((loc) => (
+                    <div key={loc.id} className="py-3 flex items-start justify-between gap-3 group">
+                      <div className="space-y-1">
+                        <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                          <span>{loc.name}</span>
+                        </div>
+                        <div className="text-[11px] font-mono text-slate-500">
+                          {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px]">
+                          <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-semibold">
+                            Radius: {loc.radius_meters}m
+                          </span>
+                          <span className="text-slate-400">
+                            Max Acc: {loc.max_accuracy_meters || 100}m
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSelectToEdit(loc)}
+                        className="text-xs h-7 px-2"
+                      >
+                        <Edit2 className="w-3 h-3 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

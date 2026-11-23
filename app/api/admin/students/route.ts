@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/get-user';
 import { studentSchema } from '@/lib/validation';
-import { isUsingMockData, mockStore } from '@/lib/supabase/mock-store';
+import { isUsingMockData, mockStore, saveStore } from '@/lib/supabase/mock-store';
 import { createClientServer } from '@/lib/supabase/server';
 import { getServiceRoleClient } from '@/lib/supabase/admin';
 import { Profile } from '@/types';
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
           usn: row.usn?.trim(),
           semester: row.semester ? String(row.semester).trim() : '5',
           section: row.section ? String(row.section).trim() : 'A',
+          photo_url: row.photo_url || row.photo || null,
         });
 
         if (!val.success) {
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
               ...mockStore.profiles[existingIdx],
               ...studentData,
               active: true,
+              updated_at: new Date().toISOString(),
             };
           } else {
             mockStore.profiles.push({
@@ -102,7 +104,6 @@ export async function POST(request: NextRequest) {
           importedCount++;
         } else {
           const supabase = getServiceRoleClient() || createClientServer();
-          // Insert or update profile
           await supabase.from('profiles').upsert(
             {
               name: studentData.name,
@@ -110,6 +111,7 @@ export async function POST(request: NextRequest) {
               usn: studentData.usn,
               semester: studentData.semester,
               section: studentData.section,
+              photo_url: studentData.photo_url,
               role: 'STUDENT',
               active: true,
             },
@@ -117,6 +119,10 @@ export async function POST(request: NextRequest) {
           );
           importedCount++;
         }
+      }
+
+      if (isUsingMockData()) {
+        saveStore();
       }
 
       await logAudit(user.id, 'STUDENTS_IMPORTED_CSV', {
@@ -144,6 +150,7 @@ export async function POST(request: NextRequest) {
         if (!student) return NextResponse.json({ success: false, message: 'Student not found' }, { status: 404 });
         student.active = active;
         student.updated_at = new Date().toISOString();
+        saveStore();
         return NextResponse.json({ success: true, message: `Student status updated to ${active ? 'Active' : 'Deactivated'}` });
       }
 
@@ -167,7 +174,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, email, usn, semester, section } = validated.data;
+    const { name, email, usn, semester, section, photo_url } = validated.data;
     const now = new Date().toISOString();
 
     if (isUsingMockData()) {
@@ -181,9 +188,20 @@ export async function POST(request: NextRequest) {
           usn,
           semester,
           section,
+          photo_url: photo_url !== undefined ? photo_url : mockStore.profiles[idx].photo_url,
           updated_at: now,
         };
+        saveStore();
         return NextResponse.json({ success: true, message: 'Student updated successfully', student: mockStore.profiles[idx] });
+      }
+
+      // Check unique USN / Email
+      const duplicate = mockStore.profiles.find((p) => p.email === email || p.usn === usn);
+      if (duplicate) {
+        return NextResponse.json(
+          { success: false, message: 'A student with this Email or USN already exists.' },
+          { status: 409 }
+        );
       }
 
       const newStudent: Profile = {
@@ -193,12 +211,14 @@ export async function POST(request: NextRequest) {
         usn,
         semester,
         section,
+        photo_url: photo_url || null,
         role: 'STUDENT',
         active: true,
         created_at: now,
         updated_at: now,
       };
       mockStore.profiles.push(newStudent);
+      saveStore();
       return NextResponse.json({ success: true, message: 'Student added successfully', student: newStudent });
     }
 
@@ -206,7 +226,7 @@ export async function POST(request: NextRequest) {
     if (studentId) {
       const { data, error } = await supabase
         .from('profiles')
-        .update({ name, email, usn, semester, section, updated_at: now })
+        .update({ name, email, usn, semester, section, photo_url, updated_at: now })
         .eq('id', studentId)
         .select()
         .single();
@@ -223,6 +243,7 @@ export async function POST(request: NextRequest) {
         usn,
         semester,
         section,
+        photo_url,
         role: 'STUDENT',
         active: true,
       })
@@ -250,5 +271,6 @@ async function logAudit(userId: string, action: string, metadata: any) {
       metadata,
       created_at: new Date().toISOString(),
     });
+    saveStore();
   }
 }

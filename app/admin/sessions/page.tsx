@@ -254,7 +254,14 @@ export default function AdminSessionsPage() {
               </div>
 
               <div className="divide-y divide-slate-100">
-                {sessions.map((sess) => {
+                {sessions.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-xs">
+                    <Calendar className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                    <p className="font-semibold text-slate-700">No attendance sessions created yet.</p>
+                    <p className="mt-1">Fill out the form on the left to schedule and start attendance.</p>
+                  </div>
+                ) : (
+                  sessions.map((sess) => {
                   const isActive = sess.status === 'ACTIVE';
 
                   return (
@@ -322,7 +329,7 @@ export default function AdminSessionsPage() {
                       </div>
                     </div>
                   );
-                })}
+                }))}
               </div>
             </CardContent>
           </Card>
