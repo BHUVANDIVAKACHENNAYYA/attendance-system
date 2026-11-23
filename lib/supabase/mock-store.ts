@@ -2,14 +2,21 @@ import fs from 'fs';
 import path from 'path';
 import {
   Profile,
+  Semester,
+  Course,
+  Section,
+  StudentCourse,
   AttendanceLocation,
   AttendanceSession,
   AttendanceRecord,
   AuditLog,
 } from '@/types';
 
-// Persistent data store for local development and standalone mode
 export interface GlobalStore {
+  semesters: Semester[];
+  courses: Course[];
+  sections: Section[];
+  studentCourses: StudentCourse[];
   profiles: Profile[];
   locations: AttendanceLocation[];
   sessions: AttendanceSession[];
@@ -25,6 +32,10 @@ function loadStoreFromFile(): GlobalStore {
       const raw = fs.readFileSync(DATA_FILE_PATH, 'utf-8');
       const parsed = JSON.parse(raw);
       return {
+        semesters: Array.isArray(parsed.semesters) ? parsed.semesters : [],
+        courses: Array.isArray(parsed.courses) ? parsed.courses : [],
+        sections: Array.isArray(parsed.sections) ? parsed.sections : [],
+        studentCourses: Array.isArray(parsed.studentCourses) ? parsed.studentCourses : [],
         profiles: Array.isArray(parsed.profiles) ? parsed.profiles : [],
         locations: Array.isArray(parsed.locations) ? parsed.locations : [],
         sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
@@ -38,6 +49,10 @@ function loadStoreFromFile(): GlobalStore {
 
   // Clean empty state - ZERO dummy data
   return {
+    semesters: [],
+    courses: [],
+    sections: [],
+    studentCourses: [],
     profiles: [],
     locations: [],
     sessions: [],

@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AttendanceLocation } from '@/types';
+import { Navbar } from '@/components/ui/navbar';
 
 export default function AdminLocationsPage() {
   const [locations, setLocations] = useState<AttendanceLocation[]>([]);
@@ -118,9 +119,12 @@ export default function AdminLocationsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <Navbar />
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 space-y-6">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Attendance Location Management
@@ -294,6 +298,7 @@ export default function AdminLocationsPage() {
           </Card>
         </div>
       </div>
-    </div>
-  );
+    </main>
+  </div>
+);
 }

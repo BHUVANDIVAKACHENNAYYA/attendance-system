@@ -112,7 +112,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Check duplicate attendance
+    // 4. Verify Student Academic Eligibility
+    if (session.semester_id && student.semester_id && session.semester_id !== student.semester_id) {
+      return NextResponse.json(
+        { success: false, message: 'You do not belong to the semester assigned to this session.' },
+        { status: 403 }
+      );
+    }
+    if (session.section_id && student.section_id && session.section_id !== student.section_id) {
+      return NextResponse.json(
+        { success: false, message: 'You do not belong to the section assigned to this session.' },
+        { status: 403 }
+      );
+    }
+    if (session.course_id && isUsingMockData()) {
+      const enrolledCourseIds = (mockStore.studentCourses || [])
+        .filter((sc) => sc.student_id === student.id)
+        .map((sc) => sc.course_id);
+      if (enrolledCourseIds.length > 0 && !enrolledCourseIds.includes(session.course_id)) {
+        return NextResponse.json(
+          { success: false, message: 'You are not enrolled in this course.' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 5. Check duplicate attendance
     if (existingRecord) {
       return NextResponse.json(
         {
@@ -214,7 +239,7 @@ export async function POST(request: NextRequest) {
       location.longitude
     );
 
-    const allowedRadius = location.radius_meters || 50;
+    const allowedRadius = session.gps_radius || location.radius_meters || 50;
 
     // 9. Enforce Permitted Radius Rule
     if (distanceMeters > allowedRadius) {

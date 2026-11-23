@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Navbar } from '@/components/ui/navbar';
 import Papa from 'papaparse';
 
 export default function AdminReportsPage() {
@@ -87,9 +88,12 @@ export default function AdminReportsPage() {
 
   if (loading) {
     return (
-      <div className="py-16 text-center space-y-3">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-xs text-slate-500">Generating analytics & attendance reports...</p>
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center p-16 text-center space-y-3">
+          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-slate-500">Generating analytics & attendance reports...</p>
+        </div>
       </div>
     );
   }
@@ -102,9 +106,14 @@ export default function AdminReportsPage() {
   };
 
   return (
-    <div className="space-y-6 print:m-0 print:p-0">
-      {/* Header & Export Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+    <div className="min-h-screen bg-slate-50 flex flex-col print:bg-white">
+      <div className="print:hidden">
+        <Navbar />
+      </div>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 space-y-6 print:m-0 print:p-0">
+        {/* Header & Export Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Attendance Reports & Analytics
@@ -313,6 +322,7 @@ export default function AdminReportsPage() {
           </div>
         )}
       </Card>
-    </div>
-  );
+    </main>
+  </div>
+);
 }

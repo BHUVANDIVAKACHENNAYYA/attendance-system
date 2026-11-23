@@ -4,7 +4,7 @@ import { studentSchema } from '@/lib/validation';
 import { isUsingMockData, mockStore, saveStore } from '@/lib/supabase/mock-store';
 import { createClientServer } from '@/lib/supabase/server';
 import { getServiceRoleClient } from '@/lib/supabase/admin';
-import { Profile } from '@/types';
+import { Profile, StudentCourse } from '@/types';
 import Papa from 'papaparse';
 
 export async function GET(request: NextRequest) {
@@ -14,20 +14,87 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Admin access required' }, { status: 403 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const semesterId = searchParams.get('semesterId');
+    const sectionId = searchParams.get('sectionId');
+    const courseId = searchParams.get('courseId');
+
     if (isUsingMockData()) {
-      const students = mockStore.profiles.filter((p) => p.role === 'STUDENT');
-      return NextResponse.json({ success: true, students });
+      let students = (mockStore.profiles || []).filter((p) => p.role === 'STUDENT');
+
+      if (semesterId) {
+        students = students.filter(
+          (p) => p.semester_id === semesterId || p.semester === semesterId
+        );
+      }
+      if (sectionId) {
+        students = students.filter(
+          (p) => p.section_id === sectionId || p.section === sectionId
+        );
+      }
+      if (courseId) {
+        const studentIdsInCourse = new Set(
+          (mockStore.studentCourses || [])
+            .filter((sc) => sc.course_id === courseId)
+            .map((sc) => sc.student_id)
+        );
+        students = students.filter((p) => studentIdsInCourse.has(p.id));
+      }
+
+      // Enrich with semester_info, section_info, and enrolled_courses
+      const enrichedStudents = students.map((s) => {
+        const sem = (mockStore.semesters || []).find(
+          (m) => m.id === s.semester_id || String(m.semester_number) === s.semester
+        ) || null;
+        const sec = (mockStore.sections || []).find(
+          (x) => x.id === s.section_id || (x.name === s.section && (!s.semester_id || x.semester_id === s.semester_id))
+        ) || null;
+        const enrolledCourseIds = (mockStore.studentCourses || [])
+          .filter((sc) => sc.student_id === s.id)
+          .map((sc) => sc.course_id);
+        const enrolled_courses = (mockStore.courses || []).filter((c) =>
+          enrolledCourseIds.includes(c.id)
+        );
+
+        return {
+          ...s,
+          semester_info: sem,
+          section_info: sec,
+          enrolled_courses,
+        };
+      });
+
+      return NextResponse.json({ success: true, students: enrichedStudents });
     }
 
     const supabase = getServiceRoleClient() || createClientServer();
-    const { data, error } = await supabase
+    let query = supabase
       .from('profiles')
-      .select('*')
-      .eq('role', 'STUDENT')
-      .order('usn', { ascending: true });
+      .select('*, semester_info:semesters(*), section_info:sections(*), student_courses(*, course:courses(*))')
+      .eq('role', 'STUDENT');
 
+    if (semesterId) {
+      query = query.eq('semester_id', semesterId);
+    }
+    if (sectionId) {
+      query = query.eq('section_id', sectionId);
+    }
+
+    const { data, error } = await query.order('usn', { ascending: true });
     if (error) throw error;
-    return NextResponse.json({ success: true, students: data || [] });
+
+    let students = (data || []).map((s: any) => ({
+      ...s,
+      enrolled_courses: (s.student_courses || []).map((sc: any) => sc.course).filter(Boolean),
+    }));
+
+    if (courseId) {
+      students = students.filter((s: any) =>
+        s.enrolled_courses.some((c: any) => c.id === courseId)
+      );
+    }
+
+    return NextResponse.json({ success: true, students });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: error?.message || 'Failed to list students' },
@@ -174,63 +241,123 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, email, usn, semester, section, photo_url } = validated.data;
+    const { name, email, usn, semester_id, section_id, semester, section, photo_url, course_ids } = validated.data;
     const now = new Date().toISOString();
 
     if (isUsingMockData()) {
+      if (!mockStore.studentCourses) {
+        mockStore.studentCourses = [];
+      }
+
+      let currentStudentId = studentId;
+
       if (studentId) {
         const idx = mockStore.profiles.findIndex((p) => p.id === studentId);
         if (idx === -1) return NextResponse.json({ success: false, message: 'Student not found' }, { status: 404 });
+        
+        // Resolve semester / section display text if IDs are provided
+        const semObj = semester_id ? mockStore.semesters.find((s) => s.id === semester_id) : null;
+        const secObj = section_id ? mockStore.sections.find((s) => s.id === section_id) : null;
+
         mockStore.profiles[idx] = {
           ...mockStore.profiles[idx],
           name,
           email,
           usn,
-          semester,
-          section,
+          semester_id: semester_id || mockStore.profiles[idx].semester_id,
+          section_id: section_id || mockStore.profiles[idx].section_id,
+          semester: semObj ? String(semObj.semester_number) : (semester || mockStore.profiles[idx].semester),
+          section: secObj ? secObj.name : (section || mockStore.profiles[idx].section),
           photo_url: photo_url !== undefined ? photo_url : mockStore.profiles[idx].photo_url,
           updated_at: now,
         };
-        saveStore();
-        return NextResponse.json({ success: true, message: 'Student updated successfully', student: mockStore.profiles[idx] });
+      } else {
+        // Check unique USN / Email
+        const duplicate = mockStore.profiles.find((p) => p.email === email || p.usn === usn);
+        if (duplicate) {
+          return NextResponse.json(
+            { success: false, message: 'A student with this Email or USN already exists.' },
+            { status: 409 }
+          );
+        }
+
+        const semObj = semester_id ? mockStore.semesters.find((s) => s.id === semester_id) : null;
+        const secObj = section_id ? mockStore.sections.find((s) => s.id === section_id) : null;
+
+        currentStudentId = `st-${Date.now()}`;
+        const newStudent: Profile = {
+          id: currentStudentId,
+          name,
+          email,
+          usn,
+          semester_id: semester_id || null,
+          section_id: section_id || null,
+          semester: semObj ? String(semObj.semester_number) : (semester || '5'),
+          section: secObj ? secObj.name : (section || 'A'),
+          photo_url: photo_url || null,
+          role: 'STUDENT',
+          active: true,
+          created_at: now,
+          updated_at: now,
+        };
+        mockStore.profiles.push(newStudent);
       }
 
-      // Check unique USN / Email
-      const duplicate = mockStore.profiles.find((p) => p.email === email || p.usn === usn);
-      if (duplicate) {
-        return NextResponse.json(
-          { success: false, message: 'A student with this Email or USN already exists.' },
-          { status: 409 }
-        );
+      // Update enrolled courses
+      if (Array.isArray(course_ids)) {
+        mockStore.studentCourses = mockStore.studentCourses.filter((sc) => sc.student_id !== currentStudentId);
+        course_ids.forEach((cid) => {
+          mockStore.studentCourses.push({
+            id: `sc-${Date.now()}-${cid}`,
+            student_id: currentStudentId!,
+            course_id: cid,
+            created_at: now,
+          });
+        });
       }
 
-      const newStudent: Profile = {
-        id: `st-${Date.now()}`,
-        name,
-        email,
-        usn,
-        semester,
-        section,
-        photo_url: photo_url || null,
-        role: 'STUDENT',
-        active: true,
-        created_at: now,
-        updated_at: now,
-      };
-      mockStore.profiles.push(newStudent);
       saveStore();
-      return NextResponse.json({ success: true, message: 'Student added successfully', student: newStudent });
+
+      const finalStudent = mockStore.profiles.find((p) => p.id === currentStudentId);
+      return NextResponse.json({
+        success: true,
+        message: studentId ? 'Student updated successfully' : 'Student added successfully',
+        student: finalStudent,
+      });
     }
 
     const supabase = getServiceRoleClient() || createClientServer();
     if (studentId) {
       const { data, error } = await supabase
         .from('profiles')
-        .update({ name, email, usn, semester, section, photo_url, updated_at: now })
+        .update({
+          name,
+          email,
+          usn,
+          semester_id,
+          section_id,
+          semester,
+          section,
+          photo_url,
+          updated_at: now,
+        })
         .eq('id', studentId)
         .select()
         .single();
       if (error) throw error;
+
+      // Update course enrollments
+      if (Array.isArray(course_ids)) {
+        await supabase.from('student_courses').delete().eq('student_id', studentId);
+        if (course_ids.length > 0) {
+          const insertCourses = course_ids.map((cid) => ({
+            student_id: studentId,
+            course_id: cid,
+          }));
+          await supabase.from('student_courses').insert(insertCourses);
+        }
+      }
+
       return NextResponse.json({ success: true, message: 'Student updated successfully', student: data });
     }
 
@@ -241,6 +368,8 @@ export async function POST(request: NextRequest) {
         name,
         email,
         usn,
+        semester_id,
+        section_id,
         semester,
         section,
         photo_url,
@@ -251,6 +380,15 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    if (Array.isArray(course_ids) && course_ids.length > 0) {
+      const insertCourses = course_ids.map((cid) => ({
+        student_id: data.id,
+        course_id: cid,
+      }));
+      await supabase.from('student_courses').insert(insertCourses);
+    }
+
     return NextResponse.json({ success: true, message: 'Student added successfully', student: data });
   } catch (error: any) {
     return NextResponse.json(
@@ -265,7 +403,7 @@ async function logAudit(userId: string, action: string, metadata: any) {
     mockStore.auditLogs.unshift({
       id: `log-${Date.now()}`,
       user_id: userId,
-      action,
+      action: action as any,
       entity_type: 'students',
       entity_id: null,
       metadata,

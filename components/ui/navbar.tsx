@@ -10,11 +10,16 @@ import {
   BarChart3,
   LogOut,
   Navigation,
-  ShieldCheck,
   History,
   CheckCircle2,
   FileText,
-  UserCheck,
+  Layers,
+  BookOpen,
+  FolderTree,
+  User,
+  Radio,
+  Menu,
+  X,
 } from 'lucide-react';
 import { Profile } from '@/types';
 
@@ -23,6 +28,7 @@ export function Navbar() {
   const router = useRouter();
   const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -45,6 +51,25 @@ export function Navbar() {
 
   const isAdmin = user?.role === 'ADMIN';
 
+  const adminNavItems = [
+    { href: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
+    { href: '/admin/semesters', label: 'Semesters', icon: Layers },
+    { href: '/admin/courses', label: 'Courses', icon: BookOpen },
+    { href: '/admin/sections', label: 'Sections', icon: FolderTree },
+    { href: '/admin/students', label: 'Students', icon: Users },
+    { href: '/admin/locations', label: 'Locations', icon: MapPin },
+    { href: '/admin/sessions', label: 'Sessions', icon: Calendar },
+    { href: '/admin/attendance', label: 'Live Attendance', icon: Radio },
+    { href: '/admin/reports', label: 'Reports', icon: FileText },
+  ];
+
+  const studentNavItems = [
+    { href: '/student/dashboard', label: 'Dashboard', icon: CheckCircle2 },
+    { href: '/student/sessions', label: 'My Sessions', icon: Calendar },
+    { href: '/student/history', label: 'Attendance History', icon: History },
+    { href: '/student/profile', label: 'My Profile', icon: User },
+  ];
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -63,118 +88,63 @@ export function Navbar() {
                   GPS Attendance
                 </span>
                 <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider block">
-                  College Class System
+                  {isAdmin ? 'Admin Portal' : 'Student Portal'}
                 </span>
               </div>
             </Link>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center space-x-1">
+          {/* Desktop Navigation Links */}
+          <nav className="hidden lg:flex items-center space-x-1 overflow-x-auto py-1">
             {isAdmin ? (
-              <>
-                <Link
-                  href="/admin/dashboard"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    pathname === '/admin/dashboard'
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <BarChart3 className="w-4 h-4" />
-                    Dashboard
-                  </span>
-                </Link>
-                <Link
-                  href="/admin/locations"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    pathname === '/admin/locations'
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4" />
-                    Locations
-                  </span>
-                </Link>
-                <Link
-                  href="/admin/sessions"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    pathname === '/admin/sessions'
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4" />
-                    Sessions
-                  </span>
-                </Link>
-                <Link
-                  href="/admin/students"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    pathname === '/admin/students'
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Users className="w-4 h-4" />
-                    Students
-                  </span>
-                </Link>
-                <Link
-                  href="/admin/reports"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    pathname === '/admin/reports'
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <FileText className="w-4 h-4" />
-                    Reports
-                  </span>
-                </Link>
-              </>
+              adminNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
+                      isActive
+                        ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Icon className="w-3.5 h-3.5" />
+                      {item.label}
+                    </span>
+                  </Link>
+                );
+              })
             ) : user ? (
-              <>
-                <Link
-                  href="/student/dashboard"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    pathname === '/student/dashboard'
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Mark Attendance
-                  </span>
-                </Link>
-                <Link
-                  href="/student/history"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    pathname === '/student/history'
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    <History className="w-4 h-4" />
-                    My History
-                  </span>
-                </Link>
-              </>
+              studentNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap ${
+                      isActive
+                        ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Icon className="w-4 h-4" />
+                      {item.label}
+                    </span>
+                  </Link>
+                );
+              })
             ) : null}
           </nav>
 
           {/* User profile & actions */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             {user ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 {user.photo_url ? (
                   <img
                     src={user.photo_url}
@@ -183,7 +153,7 @@ export function Navbar() {
                   />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
-                    {user.name.charAt(0)}
+                    {user.name.charAt(0).toUpperCase()}
                   </div>
                 )}
 
@@ -197,7 +167,7 @@ export function Navbar() {
                 </div>
 
                 <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border hidden sm:inline-block ${
                     isAdmin
                       ? 'bg-purple-50 text-purple-700 border-purple-200'
                       : 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -213,6 +183,15 @@ export function Navbar() {
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
+
+                {/* Mobile hamburger button */}
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
+                  aria-label="Toggle navigation menu"
+                >
+                  {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </button>
               </div>
             ) : (
               <Link
@@ -226,58 +205,28 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile navigation row */}
-      {user && (
-        <div className="md:hidden border-t border-slate-200 bg-slate-50/80 px-4 py-2 flex justify-around text-xs font-medium text-slate-600">
-          {isAdmin ? (
-            <>
+      {/* Mobile navigation dropdown */}
+      {user && mobileMenuOpen && (
+        <div className="lg:hidden border-t border-slate-200 bg-white px-4 py-3 shadow-lg space-y-1">
+          {(isAdmin ? adminNavItems : studentNavItems).map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            return (
               <Link
-                href="/admin/dashboard"
-                className={pathname === '/admin/dashboard' ? 'text-indigo-600 font-bold' : ''}
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
+                  isActive
+                    ? 'bg-indigo-50 text-indigo-700 font-semibold'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
               >
-                Dashboard
+                <Icon className="w-4 h-4" />
+                {item.label}
               </Link>
-              <Link
-                href="/admin/locations"
-                className={pathname === '/admin/locations' ? 'text-indigo-600 font-bold' : ''}
-              >
-                Locations
-              </Link>
-              <Link
-                href="/admin/sessions"
-                className={pathname === '/admin/sessions' ? 'text-indigo-600 font-bold' : ''}
-              >
-                Sessions
-              </Link>
-              <Link
-                href="/admin/students"
-                className={pathname === '/admin/students' ? 'text-indigo-600 font-bold' : ''}
-              >
-                Students
-              </Link>
-              <Link
-                href="/admin/reports"
-                className={pathname === '/admin/reports' ? 'text-indigo-600 font-bold' : ''}
-              >
-                Reports
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/student/dashboard"
-                className={pathname === '/student/dashboard' ? 'text-indigo-600 font-bold' : ''}
-              >
-                Mark Attendance
-              </Link>
-              <Link
-                href="/student/history"
-                className={pathname === '/student/history' ? 'text-indigo-600 font-bold' : ''}
-              >
-                History & %
-              </Link>
-            </>
-          )}
+            );
+          })}
         </div>
       )}
     </header>
