@@ -14,6 +14,8 @@ function getNodePath(): any {
   }
 }
 
+import initialData from '@/data/attendance-db.json';
+
 import {
   Profile,
   Semester,
@@ -42,6 +44,29 @@ export interface GlobalStore {
   emailSettings?: EmailSettings;
 }
 
+function parseStoreData(parsed: any): GlobalStore {
+  return {
+    semesters: Array.isArray(parsed?.semesters) ? [...parsed.semesters] : [],
+    courses: Array.isArray(parsed?.courses) ? [...parsed.courses] : [],
+    sections: Array.isArray(parsed?.sections) ? [...parsed.sections] : [],
+    studentCourses: Array.isArray(parsed?.studentCourses) ? [...parsed.studentCourses] : [],
+    profiles: Array.isArray(parsed?.profiles) ? [...parsed.profiles] : [],
+    locations: Array.isArray(parsed?.locations) ? [...parsed.locations] : [],
+    sessions: Array.isArray(parsed?.sessions) ? [...parsed.sessions] : [],
+    records: Array.isArray(parsed?.records) ? [...parsed.records] : [],
+    auditLogs: Array.isArray(parsed?.auditLogs) ? [...parsed.auditLogs] : [],
+    outgoingEmails: Array.isArray(parsed?.outgoingEmails) ? [...parsed.outgoingEmails] : [],
+    emailSettings: parsed?.emailSettings || {
+      smtpHost: 'smtp.gmail.com',
+      smtpPort: 465,
+      smtpUser: 'bhuvansondabhvi@gmail.com',
+      senderName: 'GPS Attendance System',
+      senderEmail: 'bhuvansondabhvi@gmail.com',
+      directSendEnabled: true,
+    },
+  };
+}
+
 function loadStoreFromFile(): GlobalStore {
   try {
     const fs = getNodeFs();
@@ -51,53 +76,15 @@ function loadStoreFromFile(): GlobalStore {
       if (fs.existsSync(dataFilePath)) {
         const raw = fs.readFileSync(dataFilePath, 'utf-8');
         const parsed = JSON.parse(raw);
-        return {
-          semesters: Array.isArray(parsed.semesters) ? parsed.semesters : [],
-          courses: Array.isArray(parsed.courses) ? parsed.courses : [],
-          sections: Array.isArray(parsed.sections) ? parsed.sections : [],
-          studentCourses: Array.isArray(parsed.studentCourses) ? parsed.studentCourses : [],
-          profiles: Array.isArray(parsed.profiles) ? parsed.profiles : [],
-          locations: Array.isArray(parsed.locations) ? parsed.locations : [],
-          sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
-          records: Array.isArray(parsed.records) ? parsed.records : [],
-          auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [],
-          outgoingEmails: Array.isArray(parsed.outgoingEmails) ? parsed.outgoingEmails : [],
-          emailSettings: parsed.emailSettings || {
-            smtpHost: 'smtp.gmail.com',
-            smtpPort: 465,
-            smtpUser: 'bhuvansondabhvi@gmail.com',
-            senderName: 'GPS Attendance System',
-            senderEmail: 'bhuvansondabhvi@gmail.com',
-            directSendEnabled: true,
-          },
-        };
+        return parseStoreData(parsed);
       }
     }
   } catch (err) {
     console.error('Error reading persistence file:', err);
   }
 
-  // Clean empty state - ZERO dummy data
-  return {
-    semesters: [],
-    courses: [],
-    sections: [],
-    studentCourses: [],
-    profiles: [],
-    locations: [],
-    sessions: [],
-    records: [],
-    auditLogs: [],
-    outgoingEmails: [],
-    emailSettings: {
-      smtpHost: 'smtp.gmail.com',
-      smtpPort: 465,
-      smtpUser: 'bhuvansondabhvi@gmail.com',
-      senderName: 'GPS Attendance System',
-      senderEmail: 'bhuvansondabhvi@gmail.com',
-      directSendEnabled: true,
-    },
-  };
+  // Fallback to bundled static initial database (used in serverless/Edge runtime when fs is unavailable)
+  return parseStoreData(initialData);
 }
 
 export function saveStore() {

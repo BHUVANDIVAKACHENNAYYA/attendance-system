@@ -92,6 +92,14 @@ export async function POST(request: NextRequest) {
           maxAge: 60 * 60 * 24 * 7,
         });
 
+        const encodedUser = Buffer.from(JSON.stringify(newProfile)).toString('base64');
+        response.cookies.set('session_user', encodedUser, {
+          path: '/',
+          httpOnly: false,
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 7,
+        });
+
         return response;
       }
 
@@ -186,6 +194,14 @@ export async function POST(request: NextRequest) {
         maxAge: 60 * 60 * 24 * 7,
       });
 
+      const encodedUser = Buffer.from(JSON.stringify(found)).toString('base64');
+      response.cookies.set('session_user', encodedUser, {
+        path: '/',
+        httpOnly: false,
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7,
+      });
+
       return response;
     }
 
@@ -229,6 +245,11 @@ export async function DELETE() {
   });
 
   response.cookies.set('demo_user_id', '', {
+    path: '/',
+    maxAge: 0,
+  });
+
+  response.cookies.set('session_user', '', {
     path: '/',
     maxAge: 0,
   });

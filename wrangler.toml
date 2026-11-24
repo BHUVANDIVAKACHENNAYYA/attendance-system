@@ -4,6 +4,3 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
 
-[vars]
-DEFAULT_MAX_ACCURACY_METERS = "100"
-DEFAULT_ATTENDANCE_RADIUS_METERS = "50"
