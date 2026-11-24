@@ -6,6 +6,7 @@ import { createClientServer } from '@/lib/supabase/server';
 import { getServiceRoleClient } from '@/lib/supabase/admin';
 import { Profile, StudentCourse } from '@/types';
 import Papa from 'papaparse';
+import { dispatchStudentCredentialEmail } from '@/lib/email/dispatcher';
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,7 +65,11 @@ export async function GET(request: NextRequest) {
         };
       });
 
-      return NextResponse.json({ success: true, students: enrichedStudents });
+      return NextResponse.json({
+        success: true,
+        students: enrichedStudents,
+        outgoingEmails: mockStore.outgoingEmails || [],
+      });
     }
 
     const supabase = getServiceRoleClient() || createClientServer();
@@ -94,7 +99,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, students });
+    return NextResponse.json({ success: true, students, outgoingEmails: [] });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: error?.message || 'Failed to list students' },
@@ -302,11 +307,20 @@ export async function POST(request: NextRequest) {
           studentUsn: student.usn,
         });
 
+        const emailDispatch = await dispatchStudentCredentialEmail({
+          to: student.email,
+          studentName: student.name,
+          usn: student.usn || '',
+          temporaryPassword: assignedPass,
+          semester: student.semester || '5',
+          section: student.section || 'A',
+        });
+
         return NextResponse.json({
           success: true,
           message: `Password reset successfully. New temporary password: ${assignedPass}`,
           temporaryPassword: assignedPass,
-          emailDispatched: true,
+          emailDispatch,
         });
       }
 
@@ -347,16 +361,15 @@ export async function POST(request: NextRequest) {
         mockStore.studentCourses = [];
       }
 
+      const semObj = semester_id ? mockStore.semesters.find((s) => s.id === semester_id) : null;
+      const secObj = section_id ? mockStore.sections.find((s) => s.id === section_id) : null;
+
       let currentStudentId = studentId;
 
       if (studentId) {
         const idx = mockStore.profiles.findIndex((p) => p.id === studentId);
         if (idx === -1) return NextResponse.json({ success: false, message: 'Student not found' }, { status: 404 });
         
-        // Resolve semester / section display text if IDs are provided
-        const semObj = semester_id ? mockStore.semesters.find((s) => s.id === semester_id) : null;
-        const secObj = section_id ? mockStore.sections.find((s) => s.id === section_id) : null;
-
         mockStore.profiles[idx] = {
           ...mockStore.profiles[idx],
           name,
@@ -379,9 +392,6 @@ export async function POST(request: NextRequest) {
             { status: 409 }
           );
         }
-
-        const semObj = semester_id ? mockStore.semesters.find((s) => s.id === semester_id) : null;
-        const secObj = section_id ? mockStore.sections.find((s) => s.id === section_id) : null;
 
         currentStudentId = `st-${Date.now()}`;
         const newStudent: Profile = {
@@ -418,13 +428,25 @@ export async function POST(request: NextRequest) {
 
       saveStore();
 
+      let emailDispatch = null;
+      if (!studentId) {
+        emailDispatch = await dispatchStudentCredentialEmail({
+          to: email.trim(),
+          studentName: name.trim(),
+          usn: usn.trim(),
+          temporaryPassword: initialPassword,
+          semester: semObj ? String(semObj.semester_number) : (semester || '5'),
+          section: secObj ? secObj.name : (section || 'A'),
+        });
+      }
+
       const finalStudent = mockStore.profiles.find((p) => p.id === currentStudentId);
       return NextResponse.json({
         success: true,
         message: studentId ? 'Student updated successfully' : 'Student added successfully',
         student: finalStudent,
         temporaryPassword: initialPassword,
-        emailDispatched: true,
+        emailDispatch,
       });
     }
 
@@ -491,12 +513,21 @@ export async function POST(request: NextRequest) {
       await supabase.from('student_courses').insert(insertCourses);
     }
 
+    const emailDispatch = await dispatchStudentCredentialEmail({
+      to: email.trim(),
+      studentName: name.trim(),
+      usn: usn.trim(),
+      temporaryPassword: initialPassword,
+      semester: semester || '5',
+      section: section || 'A',
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Student added successfully',
       student: data,
       temporaryPassword: initialPassword,
-      emailDispatched: true,
+      emailDispatch,
     });
   } catch (error: any) {
     return NextResponse.json(

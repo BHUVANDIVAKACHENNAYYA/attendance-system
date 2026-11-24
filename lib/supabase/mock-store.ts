@@ -10,6 +10,7 @@ import {
   AttendanceSession,
   AttendanceRecord,
   AuditLog,
+  OutgoingEmail,
 } from '@/types';
 
 export interface GlobalStore {
@@ -22,6 +23,7 @@ export interface GlobalStore {
   sessions: AttendanceSession[];
   records: AttendanceRecord[];
   auditLogs: AuditLog[];
+  outgoingEmails: OutgoingEmail[];
 }
 
 const DATA_FILE_PATH = path.join(process.cwd(), 'data', 'attendance-db.json');
@@ -41,6 +43,7 @@ function loadStoreFromFile(): GlobalStore {
         sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
         records: Array.isArray(parsed.records) ? parsed.records : [],
         auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [],
+        outgoingEmails: Array.isArray(parsed.outgoingEmails) ? parsed.outgoingEmails : [],
       };
     }
   } catch (err) {
@@ -58,6 +61,7 @@ function loadStoreFromFile(): GlobalStore {
     sessions: [],
     records: [],
     auditLogs: [],
+    outgoingEmails: [],
   };
 }
 

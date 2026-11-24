@@ -23,6 +23,9 @@ import {
   Lock,
   Mail,
   RefreshCw,
+  ExternalLink,
+  Send,
+  Inbox,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,12 +61,19 @@ export default function AdminStudentsPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Outbox / Email Dispatch Log
+  const [outgoingEmails, setOutgoingEmails] = useState<any[]>([]);
+  const [outboxModalOpen, setOutboxModalOpen] = useState(false);
+
   // Credential Issued Modal
   const [issuedData, setIssuedData] = useState<{
     name: string;
     email: string;
     usn: string;
     temporaryPassword: string;
+    mailtoUrl?: string;
+    sent?: boolean;
+    message?: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -104,7 +114,10 @@ export default function AdminStudentsPage() {
       const secData = await secRes.json();
       const crsData = await crsRes.json();
 
-      if (stuData.success) setStudents(stuData.students || []);
+      if (stuData.success) {
+        setStudents(stuData.students || []);
+        setOutgoingEmails(stuData.outgoingEmails || []);
+      }
       if (semData.success) setSemesters(semData.semesters || []);
       if (secData.success) setSections(secData.sections || []);
       if (crsData.success) setCourses(crsData.courses || []);
@@ -263,6 +276,9 @@ export default function AdminStudentsPage() {
             email: email.trim(),
             usn: usn.trim(),
             temporaryPassword: data.temporaryPassword || initialPassword || 'Pass@1234',
+            mailtoUrl: data.emailDispatch?.mailtoUrl || `mailto:${email.trim()}?subject=${encodeURIComponent('Your GPS Student Attendance Portal Credentials')}&body=${encodeURIComponent(`Dear ${name.trim()},\n\nYour student account has been registered.\nLogin Email: ${email.trim()}\nUSN: ${usn.trim()}\nTemporary Password: ${data.temporaryPassword || initialPassword || 'Pass@1234'}\n\nPlease sign in at http://localhost:3000/login`)}`,
+            sent: data.emailDispatch?.sent || false,
+            message: data.emailDispatch?.message || '',
           });
         }
       } else {
@@ -438,6 +454,16 @@ Login URL:          ${portalUrl}
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setOutboxModalOpen(true)}
+            className="gap-1.5 text-xs bg-white"
+          >
+            <Mail className="w-3.5 h-3.5 text-indigo-600" />
+            Email Outbox ({outgoingEmails.length})
+          </Button>
+
           <Button
             size="sm"
             variant="outline"
@@ -887,15 +913,25 @@ Login URL:          ${portalUrl}
               </div>
             </div>
 
-            <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-start gap-2">
-              <Mail className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              <div>
-                <strong className="block font-semibold">Email Dispatch Prepared</strong>
-                <span>
-                  Welcome notification with login credentials has been queued for {issuedData.email}.
-                </span>
+            {issuedData.sent ? (
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block font-semibold">Email Delivered to Student</strong>
+                  <span>{issuedData.message || `Credentials successfully dispatched to ${issuedData.email}.`}</span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-semibold text-amber-800">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  Live SMTP Not Configured Yet
+                </div>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  The application is running in local mode without SMTP / email API keys configured in <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">.env.local</code>. Click below to <strong>send the email directly using your email app (Gmail/Outlook)</strong> with 1 click, or copy credentials.
+                </p>
+              </div>
+            )}
 
             <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-2 text-xs font-mono">
               <div className="flex justify-between py-1 border-b border-slate-200">
@@ -918,26 +954,138 @@ Login URL:          ${portalUrl}
               </div>
             </div>
 
-            <div className="flex items-center gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleCopyCredentials}
-                className="flex-1 text-xs gap-1.5"
+            <div className="space-y-2 pt-1">
+              <a
+                href={issuedData.mailtoUrl || `mailto:${issuedData.email}`}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? 'Copied to Clipboard!' : 'Copy Credentials'}
+                <Send className="w-3.5 h-3.5" />
+                Send Email via Email App (Gmail / Outlook)
+                <ExternalLink className="w-3 h-3 opacity-70" />
+              </a>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyCredentials}
+                  className="flex-1 text-xs gap-1.5"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? 'Copied to Clipboard!' : 'Copy Credentials'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setIssuedData(null)}
+                  className="text-xs"
+                >
+                  Done
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Email Dispatch Outbox / Logs */}
+      {outboxModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Email Dispatch Outbox</h3>
+                  <p className="text-xs text-slate-500">
+                    History of credentials generated and dispatched to students
+                  </p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setOutboxModalOpen(false)} className="text-xs">
+                Close
               </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={() => setIssuedData(null)}
-                className="text-xs"
-              >
-                Done
-              </Button>
+            </div>
+
+            {/* SMTP Guide Banner */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 space-y-1">
+              <strong className="block text-slate-800">Automatic SMTP Configuration:</strong>
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                To send emails automatically from the server, add <code className="bg-slate-200 px-1 py-0.5 rounded text-indigo-700 font-mono">RESEND_API_KEY</code> or <code className="bg-slate-200 px-1 py-0.5 rounded text-indigo-700 font-mono">SENDGRID_API_KEY</code> in <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800 font-mono">.env.local</code>. You can also click <strong>&quot;Send via Email App&quot;</strong> on any entry below to send it immediately via your local email client (Gmail / Outlook).
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {outgoingEmails.length === 0 ? (
+                <div className="p-10 text-center text-slate-400">
+                  <Inbox className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">No dispatched emails yet. Emails will appear here when you register students or reset passwords.</p>
+                </div>
+              ) : (
+                outgoingEmails.map((emailItem) => {
+                  const mailtoUrl = `mailto:${encodeURIComponent(emailItem.to)}?subject=${encodeURIComponent(
+                    emailItem.subject || 'Your GPS Attendance Portal Login Credentials'
+                  )}&body=${encodeURIComponent(emailItem.body_text || '')}`;
+
+                  return (
+                    <div
+                      key={emailItem.id}
+                      className="p-3.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50/60 transition space-y-2 text-xs"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            emailItem.status === 'SENT'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}>
+                            {emailItem.status === 'SENT' ? 'DELIVERED' : 'LOGGED IN OUTBOX'}
+                          </span>
+                          <span className="font-semibold text-slate-800">{emailItem.student_name}</span>
+                          <span className="font-mono text-slate-400">({emailItem.usn})</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {new Date(emailItem.created_at).toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-500 font-mono text-[11px]">
+                        <span>To: <strong className="text-indigo-600">{emailItem.to}</strong></span>
+                        <span>Password: <strong className="text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">{emailItem.temporary_password}</strong></span>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <a
+                          href={mailtoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded text-[11px] font-semibold transition"
+                        >
+                          <Send className="w-3 h-3" />
+                          Send via Email App
+                          <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(emailItem.body_text || `Login: ${emailItem.to}\nPassword: ${emailItem.temporary_password}`);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 border border-slate-200 text-slate-600 hover:bg-slate-100 rounded text-[11px] transition"
+                        >
+                          <Copy className="w-3 h-3" />
+                          Copy Message
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

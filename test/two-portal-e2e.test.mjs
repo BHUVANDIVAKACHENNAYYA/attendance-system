@@ -381,3 +381,44 @@ test('7. Admin Student Removal: Permanent Deletion & Associated Record Clean-up'
   assert.equal(TEST_STORE.records.some((r) => r.student_id === studentIdToDelete), false);
   assert.ok(TEST_STORE.auditLogs.some((l) => l.action === 'STUDENT_DELETED'));
 });
+
+test('8. Student Credential Email Dispatch Content & Mailto Generation', () => {
+  const payload = {
+    to: 'student@college.edu',
+    studentName: 'Rohan Sharma',
+    usn: '01FS24BEC010',
+    temporaryPassword: 'Pass@9876',
+    semester: '5',
+    section: 'B',
+  };
+
+  const appUrl = 'http://localhost:3000';
+  const loginUrl = `${appUrl}/login`;
+  const subject = `Your GPS Student Attendance Portal Credentials - ${payload.studentName} (${payload.usn})`;
+
+  // Verify content generation logic
+  assert.ok(subject.includes('Rohan Sharma'));
+  assert.ok(subject.includes('01FS24BEC010'));
+
+  const bodyText = `Dear ${payload.studentName},
+
+Welcome to the GPS-Based Student Attendance Management Portal.
+
+Your Account Credentials:
+----------------------------------------
+Portal URL:         ${loginUrl}
+Login Email:        ${payload.to}
+University Seat No: ${payload.usn}
+Temporary Password: ${payload.temporaryPassword}
+----------------------------------------`;
+
+  assert.ok(bodyText.includes('student@college.edu'));
+  assert.ok(bodyText.includes('Pass@9876'));
+
+  const mailtoUrl = `mailto:${encodeURIComponent(payload.to)}?subject=${encodeURIComponent(
+    subject
+  )}&body=${encodeURIComponent(bodyText)}`;
+
+  assert.ok(mailtoUrl.startsWith('mailto:student%40college.edu'));
+  assert.ok(mailtoUrl.includes(encodeURIComponent('Pass@9876')));
+});

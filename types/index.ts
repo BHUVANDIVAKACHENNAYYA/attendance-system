@@ -187,3 +187,16 @@ export interface StudentStats {
   absentCount: number;
   attendancePercentage: number;
 }
+
+export interface OutgoingEmail {
+  id: string;
+  to: string;
+  student_name: string;
+  usn: string;
+  temporary_password: string;
+  subject: string;
+  body_text: string;
+  status: 'SENT' | 'SIMULATED' | 'FAILED';
+  error_message?: string | null;
+  created_at: string;
+}
