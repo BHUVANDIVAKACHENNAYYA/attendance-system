@@ -1,5 +1,19 @@
-import fs from 'fs';
-import path from 'path';
+function getNodeFs(): any {
+  try {
+    return typeof process !== 'undefined' && process.env?.NEXT_RUNTIME !== 'edge' ? eval('require')('fs') : null;
+  } catch {
+    return null;
+  }
+}
+
+function getNodePath(): any {
+  try {
+    return typeof process !== 'undefined' && process.env?.NEXT_RUNTIME !== 'edge' ? eval('require')('path') : null;
+  } catch {
+    return null;
+  }
+}
+
 import {
   Profile,
   Semester,
@@ -28,33 +42,36 @@ export interface GlobalStore {
   emailSettings?: EmailSettings;
 }
 
-const DATA_FILE_PATH = path.join(process.cwd(), 'data', 'attendance-db.json');
-
 function loadStoreFromFile(): GlobalStore {
   try {
-    if (fs.existsSync(DATA_FILE_PATH)) {
-      const raw = fs.readFileSync(DATA_FILE_PATH, 'utf-8');
-      const parsed = JSON.parse(raw);
-      return {
-        semesters: Array.isArray(parsed.semesters) ? parsed.semesters : [],
-        courses: Array.isArray(parsed.courses) ? parsed.courses : [],
-        sections: Array.isArray(parsed.sections) ? parsed.sections : [],
-        studentCourses: Array.isArray(parsed.studentCourses) ? parsed.studentCourses : [],
-        profiles: Array.isArray(parsed.profiles) ? parsed.profiles : [],
-        locations: Array.isArray(parsed.locations) ? parsed.locations : [],
-        sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
-        records: Array.isArray(parsed.records) ? parsed.records : [],
-        auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [],
-        outgoingEmails: Array.isArray(parsed.outgoingEmails) ? parsed.outgoingEmails : [],
-        emailSettings: parsed.emailSettings || {
-          smtpHost: 'smtp.gmail.com',
-          smtpPort: 465,
-          smtpUser: 'bhuvansondabhvi@gmail.com',
-          senderName: 'GPS Attendance System',
-          senderEmail: 'bhuvansondabhvi@gmail.com',
-          directSendEnabled: true,
-        },
-      };
+    const fs = getNodeFs();
+    const path = getNodePath();
+    if (fs && path && typeof process !== 'undefined' && process.cwd) {
+      const dataFilePath = path.join(process.cwd(), 'data', 'attendance-db.json');
+      if (fs.existsSync(dataFilePath)) {
+        const raw = fs.readFileSync(dataFilePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        return {
+          semesters: Array.isArray(parsed.semesters) ? parsed.semesters : [],
+          courses: Array.isArray(parsed.courses) ? parsed.courses : [],
+          sections: Array.isArray(parsed.sections) ? parsed.sections : [],
+          studentCourses: Array.isArray(parsed.studentCourses) ? parsed.studentCourses : [],
+          profiles: Array.isArray(parsed.profiles) ? parsed.profiles : [],
+          locations: Array.isArray(parsed.locations) ? parsed.locations : [],
+          sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+          records: Array.isArray(parsed.records) ? parsed.records : [],
+          auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [],
+          outgoingEmails: Array.isArray(parsed.outgoingEmails) ? parsed.outgoingEmails : [],
+          emailSettings: parsed.emailSettings || {
+            smtpHost: 'smtp.gmail.com',
+            smtpPort: 465,
+            smtpUser: 'bhuvansondabhvi@gmail.com',
+            senderName: 'GPS Attendance System',
+            senderEmail: 'bhuvansondabhvi@gmail.com',
+            directSendEnabled: true,
+          },
+        };
+      }
     }
   } catch (err) {
     console.error('Error reading persistence file:', err);
@@ -85,13 +102,16 @@ function loadStoreFromFile(): GlobalStore {
 
 export function saveStore() {
   try {
-    if (typeof window === 'undefined' && globalThis.__ATTENDANCE_STORE__) {
-      const dir = path.dirname(DATA_FILE_PATH);
+    const fs = getNodeFs();
+    const path = getNodePath();
+    if (fs && path && typeof window === 'undefined' && globalThis.__ATTENDANCE_STORE__ && typeof process !== 'undefined' && process.cwd) {
+      const dataFilePath = path.join(process.cwd(), 'data', 'attendance-db.json');
+      const dir = path.dirname(dataFilePath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
       fs.writeFileSync(
-        DATA_FILE_PATH,
+        dataFilePath,
         JSON.stringify(globalThis.__ATTENDANCE_STORE__, null, 2),
         'utf-8'
       );

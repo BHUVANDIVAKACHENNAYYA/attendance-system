@@ -159,7 +159,7 @@ export default function LoginPage() {
                 label="College Email Address"
                 type="email"
                 required
-                placeholder="e.g. arun@gmail.com or admin@college.edu"
+                placeholder="e.g. 01fs24bec003@kletech.ac.in or admin@college.edu"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />

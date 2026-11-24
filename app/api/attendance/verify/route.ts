@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { attendanceVerificationSchema } from '@/lib/validation';
 import { calculateHaversineDistance } from '@/lib/gps/haversine';

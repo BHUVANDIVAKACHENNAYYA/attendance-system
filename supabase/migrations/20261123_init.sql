@@ -141,6 +141,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_records_session ON public.attendance_r
 CREATE INDEX IF NOT EXISTS idx_attendance_sessions_date ON public.attendance_sessions(attendance_date);
 CREATE INDEX IF NOT EXISTS idx_attendance_sessions_course ON public.attendance_sessions(course_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_sessions_status ON public.attendance_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_attendance_sessions_filter ON public.attendance_sessions(semester_id, section_id, status);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON public.audit_logs(created_at DESC);
 
 -- Enable Row Level Security (RLS)
@@ -217,9 +218,23 @@ CREATE POLICY "Admins can manage locations"
     USING (public.is_admin());
 
 -- RLS: attendance_sessions
-CREATE POLICY "Users can view sessions"
+-- Students can only access eligible attendance sessions matching their semester/section; Admins access all
+CREATE POLICY "Students view eligible sessions or admins all"
     ON public.attendance_sessions FOR SELECT
-    USING (auth.role() = 'authenticated');
+    USING (
+      public.is_admin()
+      OR (
+        auth.role() = 'authenticated'
+        AND (
+          semester_id IS NULL
+          OR semester_id IN (SELECT semester_id FROM public.profiles WHERE id = auth.uid())
+        )
+        AND (
+          section_id IS NULL
+          OR section_id IN (SELECT section_id FROM public.profiles WHERE id = auth.uid())
+        )
+      )
+    );
 CREATE POLICY "Admins can manage sessions"
     ON public.attendance_sessions FOR ALL
     USING (public.is_admin());
@@ -275,3 +290,28 @@ CREATE TRIGGER on_auth_user_created
 -- Enable Supabase Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE public.attendance_records;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.attendance_sessions;
+
+-- 10. Storage Bucket Setup for Student Photos
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('student-photos', 'student-photos', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Public Read Access for Student Photos' AND tablename = 'objects'
+  ) THEN
+    CREATE POLICY "Public Read Access for Student Photos"
+    ON storage.objects FOR SELECT
+    USING (bucket_id = 'student-photos');
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Authenticated Upload Access for Student Photos' AND tablename = 'objects'
+  ) THEN
+    CREATE POLICY "Authenticated Upload Access for Student Photos"
+    ON storage.objects FOR INSERT
+    WITH CHECK (bucket_id = 'student-photos' AND auth.role() = 'authenticated');
+  END IF;
+END $$;
+

@@ -85,9 +85,9 @@ test('1. Two-Portal Academic Management: Create Semester, Courses, Section, and 
   // 1.4 Register Student with Photo and enroll in courses
   const student = {
     id: 'st-001',
-    name: 'Arun Kumar',
-    email: 'arun@college.edu',
-    usn: '01FS24BEC002',
+    name: 'Bhuvan',
+    email: '01fs24bec003@kletech.ac.in',
+    usn: '01FS24BEC003',
     role: 'STUDENT',
     semester_id: semester.id,
     section_id: section.id,

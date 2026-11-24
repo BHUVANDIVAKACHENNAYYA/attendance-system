@@ -49,13 +49,85 @@ async function seed() {
       max_accuracy_meters: 100,
       active: true,
     },
+    {
+      id: 'a0000000-0000-0000-0000-000000000003',
+      name: 'Central Seminar Hall A',
+      latitude: 15.364,
+      longitude: 75.1235,
+      radius_meters: 60,
+      max_accuracy_meters: 100,
+      active: true,
+    },
+    {
+      id: 'a0000000-0000-0000-0000-000000000004',
+      name: 'Embedded IoT Project Lab',
+      latitude: 15.3655,
+      longitude: 75.125,
+      radius_meters: 45,
+      max_accuracy_meters: 100,
+      active: true,
+    },
   ];
 
   const { error: locErr } = await supabase.from('attendance_locations').upsert(locations);
   if (locErr) console.error('Error inserting locations:', locErr.message);
-  else console.log('✓ Locations seeded successfully');
+  else console.log('✓ Locations seeded successfully (4 classrooms/labs)');
 
-  console.log('✓ Database seeding complete!');
+  // 2. Semesters
+  const semester = {
+    id: 'b0000000-0000-0000-0000-000000000001',
+    name: '5th Semester',
+    semester_number: 5,
+    academic_year: '2026-2027',
+    active: true,
+  };
+  const { error: semErr } = await supabase.from('semesters').upsert(semester);
+  if (semErr) console.error('Error inserting semester:', semErr.message);
+  else console.log('✓ Semester seeded (5th Semester)');
+
+  // 3. Sections
+  const sections = [
+    {
+      id: 'c0000000-0000-0000-0000-000000000001',
+      name: 'A',
+      semester_id: semester.id,
+      active: true,
+    },
+    {
+      id: 'c0000000-0000-0000-0000-000000000002',
+      name: 'B',
+      semester_id: semester.id,
+      active: true,
+    },
+  ];
+  const { error: secErr } = await supabase.from('sections').upsert(sections);
+  if (secErr) console.error('Error inserting sections:', secErr.message);
+  else console.log('✓ Sections seeded (A, B)');
+
+  // 4. Courses
+  const courses = [
+    {
+      id: 'd0000000-0000-0000-0000-000000000001',
+      course_code: 'EC501',
+      course_name: 'Digital Communication Systems',
+      semester_id: semester.id,
+      description: 'Core electronics & communication theory and laboratory',
+      active: true,
+    },
+    {
+      id: 'd0000000-0000-0000-0000-000000000002',
+      course_code: 'EC502',
+      course_name: 'Microcontrollers & Embedded Systems',
+      semester_id: semester.id,
+      description: 'ARM Cortex architecture, peripheral interfacing, and RTOS',
+      active: true,
+    },
+  ];
+  const { error: crsErr } = await supabase.from('courses').upsert(courses);
+  if (crsErr) console.error('Error inserting courses:', crsErr.message);
+  else console.log('✓ Courses seeded (EC501, EC502)');
+
+  console.log('\n✓ Database seeding complete! All academic structures ready.');
 }
 
 seed().catch(console.error);

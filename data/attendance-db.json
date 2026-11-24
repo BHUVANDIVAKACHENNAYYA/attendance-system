@@ -1,5 +1,15 @@
 {
-  "semesters": [],
+  "semesters": [
+    {
+      "id": "sem-1795537779387",
+      "name": "5th Semester",
+      "semester_number": 5,
+      "academic_year": "2026-2027",
+      "active": true,
+      "created_at": "2026-11-24T16:29:39.387Z",
+      "updated_at": "2026-11-24T16:29:39.387Z"
+    }
+  ],
   "courses": [],
   "sections": [],
   "studentCourses": [],
@@ -19,7 +29,7 @@
       "updated_at": "2026-11-23T11:10:19.834Z"
     },
     {
-      "id": "st-1795518118304",
+      "id": "st-1795537536428",
       "name": "Bhuvan",
       "email": "01fs24bec003@kletech.ac.in",
       "usn": "01FS24BEC003",
@@ -31,14 +41,41 @@
       "role": "STUDENT",
       "password": "Bhuvan@1234",
       "active": true,
-      "created_at": "2026-11-24T11:01:58.304Z",
-      "updated_at": "2026-11-24T11:01:58.304Z"
+      "created_at": "2026-11-24T16:25:36.427Z",
+      "updated_at": "2026-11-24T16:25:36.427Z"
     }
   ],
   "locations": [],
   "sessions": [],
   "records": [],
   "auditLogs": [
+    {
+      "id": "log-1795537779387",
+      "user_id": "usr-1795432219834",
+      "action": "SEMESTER_CREATED",
+      "entity_type": "semesters",
+      "entity_id": "sem-1795537779387",
+      "metadata": {
+        "name": "5th Semester",
+        "semester_number": 5,
+        "academic_year": "2026-2027"
+      },
+      "created_at": "2026-11-24T16:29:39.387Z"
+    },
+    {
+      "id": "log-1795537494883",
+      "user_id": "usr-1795432219834",
+      "action": "STUDENT_DELETED",
+      "entity_type": "students",
+      "entity_id": null,
+      "metadata": {
+        "studentId": "st-1795518118304",
+        "studentName": "Bhuvan",
+        "studentEmail": "01fs24bec003@kletech.ac.in",
+        "studentUsn": "01FS24BEC003"
+      },
+      "created_at": "2026-11-24T16:24:54.883Z"
+    },
     {
       "id": "log-1795518087782",
       "user_id": "usr-1795432219834",
@@ -75,9 +112,9 @@
       "entity_id": null,
       "metadata": {
         "studentId": "usr-1795432392559",
-        "studentName": "arun",
-        "studentEmail": "bhuvanchennayya@gmail.com",
-        "studentUsn": "01fs24bec003"
+        "studentName": "Bhuvan",
+        "studentEmail": "01fs24bec003@kletech.ac.in",
+        "studentUsn": "01FS24BEC003"
       },
       "created_at": "2026-11-24T09:24:39.760Z"
     },
@@ -89,14 +126,25 @@
       "entity_id": null,
       "metadata": {
         "studentId": "st-1795432300972",
-        "studentName": "arun",
-        "studentEmail": "arun@gmail.com",
-        "studentUsn": "01fs24bec002"
+        "studentName": "Bhuvan",
+        "studentEmail": "01fs24bec003@kletech.ac.in",
+        "studentUsn": "01FS24BEC003"
       },
       "created_at": "2026-11-24T09:24:34.774Z"
     }
   ],
   "outgoingEmails": [
+    {
+      "id": "eml-1795537540420-zher",
+      "to": "01fs24bec003@kletech.ac.in",
+      "student_name": "Bhuvan",
+      "usn": "01FS24BEC003",
+      "temporary_password": "Bhuvan@1234",
+      "subject": "Your GPS Student Attendance Portal Credentials - Bhuvan (01FS24BEC003)",
+      "body_text": "Dear Bhuvan,\n\nWelcome to the KLE Technological University GPS-Based Student Attendance Management Portal.\n\nYour student account has been registered by college administration. You can now log in to the Student Portal to view scheduled class sessions, verify your GPS location, and mark your attendance.\n\nYour Account Credentials:\n----------------------------------------\nPortal URL:         http://localhost:3000/login\nLogin Email:        01fs24bec003@kletech.ac.in\nUniversity Seat No: 01FS24BEC003\nSemester / Section: Semester 5, Section A\nTemporary Password: Bhuvan@1234\n----------------------------------------\n\nHow to Get Started:\n1. Open the portal link: http://localhost:3000/login\n2. Sign in with your registered college email and the temporary password above.\n3. Allow location access when prompted by your browser during attendance sessions.\n4. For security, please navigate to your Student Profile and change your password.\n\nIf you have any questions or did not expect this registration, please contact your department administrator immediately.\n\nBest regards,\nAcademic Attendance Department",
+      "status": "SENT",
+      "created_at": "2026-11-24T16:25:40.420Z"
+    },
     {
       "id": "eml-1795518135239-vohl",
       "to": "01fs24bec003@kletech.ac.in",
@@ -133,5 +181,14 @@
       "error_message": "No SMTP or email API keys configured in .env.local. Stored in outbox.",
       "created_at": "2026-11-24T10:37:43.757Z"
     }
-  ]
+  ],
+  "emailSettings": {
+    "smtpHost": "smtp.gmail.com",
+    "smtpPort": 465,
+    "smtpUser": "bhuvansondabhvi@gmail.com",
+    "smtpPass": "iabn lvxe oedd ouhm",
+    "senderName": "Attendance System",
+    "senderEmail": "bhuvansondabhvi@gmail.com",
+    "directSendEnabled": true
+  }
 }

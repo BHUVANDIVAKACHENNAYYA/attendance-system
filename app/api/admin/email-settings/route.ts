@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { NextResponse } from 'next/server';
 import { mockStore, saveStore } from '@/lib/supabase/mock-store';
 import { sendSmtpMail } from '@/lib/email/smtp-client';

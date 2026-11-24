@@ -1,5 +1,18 @@
-import tls from 'tls';
-import net from 'net';
+function getNodeNet(): any {
+  try {
+    return typeof process !== 'undefined' && process.env?.NEXT_RUNTIME !== 'edge' ? eval('require')('net') : null;
+  } catch {
+    return null;
+  }
+}
+
+function getNodeTls(): any {
+  try {
+    return typeof process !== 'undefined' && process.env?.NEXT_RUNTIME !== 'edge' ? eval('require')('tls') : null;
+  } catch {
+    return null;
+  }
+}
 
 export interface SmtpOptions {
   host: string;
@@ -29,6 +42,16 @@ export interface SmtpSendResult {
  * Supports direct SSL/TLS on port 465 (Gmail, Yahoo, etc.) and STARTTLS on port 587.
  */
 export async function sendSmtpMail(options: SmtpOptions): Promise<SmtpSendResult> {
+  const net = getNodeNet();
+  const tls = getNodeTls();
+
+  if (!net || !tls) {
+    return {
+      success: false,
+      error: 'Direct raw TCP SMTP sockets are only available in Node.js server runtimes. In Edge runtime, please use Resend API, SendGrid API, or 1-click Gmail/mailto dispatch.',
+      transcript: [],
+    };
+  }
   const {
     host,
     port = 465,
@@ -46,7 +69,7 @@ export async function sendSmtpMail(options: SmtpOptions): Promise<SmtpSendResult
 
   return new Promise((resolve) => {
     let timer: NodeJS.Timeout | null = null;
-    let socket: net.Socket | tls.TLSSocket | null = null;
+    let socket: any = null;
     let step = 0;
     let buffer = '';
 
@@ -196,7 +219,7 @@ export async function sendSmtpMail(options: SmtpOptions): Promise<SmtpSendResult
         });
       }
 
-      socket.on('data', (chunk) => {
+      socket.on('data', (chunk: any) => {
         buffer += chunk.toString();
         const lines = buffer.split('\r\n');
         buffer = lines.pop() || ''; // Keep incomplete trailing fragment

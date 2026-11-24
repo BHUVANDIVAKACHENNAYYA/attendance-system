@@ -976,7 +976,7 @@ Login URL:          ${portalUrl}
                 <Input
                   type="text"
                   required
-                  placeholder="e.g. Arun Kumar"
+                  placeholder="e.g. Bhuvan"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
@@ -990,7 +990,7 @@ Login URL:          ${portalUrl}
                   <Input
                     type="text"
                     required
-                    placeholder="e.g. 01FS24BEC002"
+                    placeholder="e.g. 01FS24BEC003"
                     value={usn}
                     onChange={(e) => setUsn(e.target.value.toUpperCase())}
                     className="font-mono uppercase"
@@ -1001,7 +1001,7 @@ Login URL:          ${portalUrl}
                   <Input
                     type="email"
                     required
-                    placeholder="student@college.edu"
+                    placeholder="e.g. 01fs24bec003@kletech.ac.in"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
@@ -1718,7 +1718,7 @@ Login URL:          ${portalUrl}
                 value={csvText}
                 onChange={(e) => setCsvText(e.target.value)}
                 placeholder={`name,email,usn,semester,section
-Arun Kumar,arun@college.edu,USN001,5,A
+Bhuvan,01fs24bec003@kletech.ac.in,01FS24BEC003,5,A
 Student 2,st2@college.edu,USN002,5,A`}
                 className="w-full text-xs font-mono p-3 border border-slate-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
               />
