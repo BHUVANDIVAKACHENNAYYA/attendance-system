@@ -1,7 +1,7 @@
 {
-  "name": "GPS Attendance System",
-  "short_name": "GPS Attendance",
-  "description": "Secure GPS-verified student attendance management system",
+  "name": "KLE Technological University - GPS Attendance",
+  "short_name": "KLE Tech Attendance",
+  "description": "Secure GPS-verified student attendance management system for KLE Technological University",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -112,29 +112,48 @@ export default function AdminReportsPage() {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 space-y-6 print:m-0 print:p-0">
+        {/* Printable Official College Header */}
+        <div className="hidden print:flex items-center justify-between border-b border-slate-300 pb-4 mb-6">
+          <div className="flex items-center gap-4">
+            <img src="/logo.png" alt="KLE Technological University" className="h-12 w-auto object-contain" />
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">KLE Technological University</h1>
+              <p className="text-xs text-slate-600">GPS Student Attendance Management System • Official Academic Report</p>
+            </div>
+          </div>
+          <div className="text-right text-xs text-slate-500">
+            <div>Generated: {new Date().toLocaleDateString()}</div>
+          </div>
+        </div>
+
         {/* Header & Export Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Attendance Reports & Analytics
-          </h1>
-          <p className="text-xs text-slate-500">
-            Official monthly & daily attendance records, percentage calculations, and compliance audits
-          </p>
-        </div>
+          <div className="flex items-center gap-3">
+            <div className="h-12 px-2.5 py-1 rounded-xl bg-white border border-slate-200 shadow-xs flex items-center justify-center">
+              <img src="/logo.png" alt="KLE Technological University" className="h-8 w-auto object-contain" />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                Attendance Reports & Analytics
+              </h1>
+              <p className="text-xs text-slate-500">
+                KLE Technological University • Official monthly & daily attendance records and compliance audits
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 text-xs">
-            <Printer className="w-3.5 h-3.5" />
-            Print Report
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 text-xs">
+              <Printer className="w-3.5 h-3.5" />
+              Print Report
+            </Button>
 
-          <Button size="sm" variant="primary" onClick={handleExportCsv} className="gap-1.5 text-xs">
-            <Download className="w-3.5 h-3.5" />
-            Export CSV
-          </Button>
+            <Button size="sm" variant="primary" onClick={handleExportCsv} className="gap-1.5 text-xs">
+              <Download className="w-3.5 h-3.5" />
+              Export CSV
+            </Button>
+          </div>
         </div>
-      </div>
 
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

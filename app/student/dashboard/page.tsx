@@ -119,7 +119,7 @@ export default function StudentDashboardPage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  STUDENT PORTAL
+                  KLE TECH • STUDENT
                 </span>
                 <span className="text-xs text-slate-400 font-mono">
                   {user?.usn || 'No USN'}

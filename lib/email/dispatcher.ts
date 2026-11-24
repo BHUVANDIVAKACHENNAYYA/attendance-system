@@ -29,7 +29,7 @@ export function generateCredentialEmailContent(payload: SendEmailPayload) {
 
   const bodyText = `Dear ${payload.studentName},
 
-Welcome to the GPS-Based Student Attendance Management Portal.
+Welcome to the KLE Technological University GPS-Based Student Attendance Management Portal.
 
 Your student account has been registered by college administration. You can now log in to the Student Portal to view scheduled class sessions, verify your GPS location, and mark your attendance.
 
@@ -56,8 +56,9 @@ Academic Attendance Department`;
   const bodyHtml = `
   <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
     <div style="text-align: center; margin-bottom: 24px;">
-      <h1 style="color: #4338ca; font-size: 22px; font-weight: 800; margin: 0 0 6px 0;">GPS Attendance Management System</h1>
-      <p style="color: #64748b; font-size: 13px; margin: 0;">Official Academic Attendance Portal</p>
+      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRRrP5JV4V9SgHgmjpyKm5OLrbQOSECUeX4hNohBqtehQ&s=10" alt="KLE Technological University" style="height: 48px; width: auto; max-width: 220px; display: block; margin: 0 auto 12px auto;" />
+      <h1 style="color: #4338ca; font-size: 20px; font-weight: 800; margin: 0 0 4px 0;">GPS Attendance Management System</h1>
+      <p style="color: #64748b; font-size: 13px; margin: 0; font-weight: 600;">KLE Technological University • Academic Portal</p>
     </div>
 
     <p style="color: #334155; font-size: 14px; line-height: 1.6;">Dear <strong>${payload.studentName}</strong>,</p>

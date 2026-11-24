@@ -106,16 +106,25 @@ export default function LoginPage() {
 
   return (
     <div className="max-w-md mx-auto py-8 sm:py-12 space-y-6">
-      <div className="text-center space-y-2">
-        <div className="w-12 h-12 bg-indigo-600 rounded-xl text-white flex items-center justify-center mx-auto shadow-md">
-          <Navigation className="w-6 h-6" />
+      <div className="text-center space-y-3">
+        <div className="inline-block p-3 rounded-2xl bg-white border border-slate-200 shadow-xs mb-1">
+          <img
+            src="/logo.png"
+            alt="KLE Technological University Logo"
+            className="h-12 w-auto object-contain mx-auto"
+          />
         </div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-          GPS Attendance System
-        </h1>
-        <p className="text-xs text-slate-500">
-          Centralized Real-Time Location Verified Academic Portal
-        </p>
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            GPS Attendance System
+          </h1>
+          <p className="text-xs font-semibold text-indigo-600 mt-0.5">
+            KLE Technological University
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Real-Time Location-Verified Academic Portal
+          </p>
+        </div>
       </div>
 
       {!hasAdmin && (

@@ -19,8 +19,8 @@
       "updated_at": "2026-11-23T11:10:19.834Z"
     },
     {
-      "id": "st-1795516663757",
-      "name": "Bhuvan Chennyya",
+      "id": "st-1795518118304",
+      "name": "Bhuvan",
       "email": "01fs24bec003@kletech.ac.in",
       "usn": "01FS24BEC003",
       "semester_id": null,
@@ -31,14 +31,28 @@
       "role": "STUDENT",
       "password": "Bhuvan@1234",
       "active": true,
-      "created_at": "2026-11-24T10:37:43.757Z",
-      "updated_at": "2026-11-24T10:37:43.757Z"
+      "created_at": "2026-11-24T11:01:58.304Z",
+      "updated_at": "2026-11-24T11:01:58.304Z"
     }
   ],
   "locations": [],
   "sessions": [],
   "records": [],
   "auditLogs": [
+    {
+      "id": "log-1795518087782",
+      "user_id": "usr-1795432219834",
+      "action": "STUDENT_DELETED",
+      "entity_type": "students",
+      "entity_id": null,
+      "metadata": {
+        "studentId": "st-1795516663757",
+        "studentName": "Bhuvan Chennyya",
+        "studentEmail": "01fs24bec003@kletech.ac.in",
+        "studentUsn": "01FS24BEC003"
+      },
+      "created_at": "2026-11-24T11:01:27.782Z"
+    },
     {
       "id": "log-1795514887566",
       "user_id": "usr-1795432219834",
@@ -83,6 +97,30 @@
     }
   ],
   "outgoingEmails": [
+    {
+      "id": "eml-1795518135239-vohl",
+      "to": "01fs24bec003@kletech.ac.in",
+      "student_name": "Bhuvan",
+      "usn": "01FS24BEC003",
+      "temporary_password": "Bhuvan@1234",
+      "subject": "Your GPS Student Attendance Portal Credentials - Bhuvan (01FS24BEC003)",
+      "body_text": "Dear Bhuvan,\n\nWelcome to the GPS-Based Student Attendance Management Portal.\n\nYour student account has been registered by college administration. You can now log in to the Student Portal to view scheduled class sessions, verify your GPS location, and mark your attendance.\n\nYour Account Credentials:\n----------------------------------------\nPortal URL:         http://localhost:3000/login\nLogin Email:        01fs24bec003@kletech.ac.in\nUniversity Seat No: 01FS24BEC003\nSemester / Section: Semester 5, Section A\nTemporary Password: Bhuvan@1234\n----------------------------------------\n\nHow to Get Started:\n1. Open the portal link: http://localhost:3000/login\n2. Sign in with your registered college email and the temporary password above.\n3. Allow location access when prompted by your browser during attendance sessions.\n4. For security, please navigate to your Student Profile and change your password.\n\nIf you have any questions or did not expect this registration, please contact your department administrator immediately.\n\nBest regards,\nAcademic Attendance Department",
+      "status": "SIMULATED",
+      "error_message": "Direct SMTP password not configured yet. Ready for 1-click dispatch.",
+      "created_at": "2026-11-24T11:02:15.239Z"
+    },
+    {
+      "id": "eml-1795518118304-9sf3",
+      "to": "01fs24bec003@kletech.ac.in",
+      "student_name": "Bhuvan",
+      "usn": "01FS24BEC003",
+      "temporary_password": "Bhuvan@1234",
+      "subject": "Your GPS Student Attendance Portal Credentials - Bhuvan (01FS24BEC003)",
+      "body_text": "Dear Bhuvan,\n\nWelcome to the GPS-Based Student Attendance Management Portal.\n\nYour student account has been registered by college administration. You can now log in to the Student Portal to view scheduled class sessions, verify your GPS location, and mark your attendance.\n\nYour Account Credentials:\n----------------------------------------\nPortal URL:         http://localhost:3000/login\nLogin Email:        01fs24bec003@kletech.ac.in\nUniversity Seat No: 01FS24BEC003\nSemester / Section: Semester 5, Section A\nTemporary Password: Bhuvan@1234\n----------------------------------------\n\nHow to Get Started:\n1. Open the portal link: http://localhost:3000/login\n2. Sign in with your registered college email and the temporary password above.\n3. Allow location access when prompted by your browser during attendance sessions.\n4. For security, please navigate to your Student Profile and change your password.\n\nIf you have any questions or did not expect this registration, please contact your department administrator immediately.\n\nBest regards,\nAcademic Attendance Department",
+      "status": "SIMULATED",
+      "error_message": "Direct SMTP password not configured yet. Ready for 1-click dispatch.",
+      "created_at": "2026-11-24T11:01:58.304Z"
+    },
     {
       "id": "eml-1795516663757-7stw",
       "to": "01fs24bec003@kletech.ac.in",

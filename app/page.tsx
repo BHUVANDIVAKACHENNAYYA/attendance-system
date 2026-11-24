@@ -51,9 +51,19 @@ export default function HomePage() {
     <div className="max-w-4xl mx-auto py-8 sm:py-12 space-y-10">
       {/* Hero Banner */}
       <div className="text-center space-y-4">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold">
-          <Navigation className="w-3.5 h-3.5" />
-          <span>Automated Proximity Verification</span>
+        <div className="inline-block p-3 rounded-2xl bg-white border border-slate-200 shadow-xs mb-1">
+          <img
+            src="/logo.png"
+            alt="KLE Technological University Logo"
+            className="h-14 sm:h-16 w-auto object-contain mx-auto"
+          />
+        </div>
+
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold">
+            <Navigation className="w-3.5 h-3.5" />
+            <span>KLE Technological University • Proximity Verification</span>
+          </div>
         </div>
 
         <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">

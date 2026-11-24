@@ -3,13 +3,13 @@ import './globals.css';
 import { Navbar } from '@/components/ui/navbar';
 
 export const metadata: Metadata = {
-  title: 'GPS Attendance System | College Management',
-  description: 'Production-ready GPS-verified student attendance management system',
+  title: 'KLE Technological University | GPS Attendance System',
+  description: 'Official KLE Technological University GPS-verified student attendance management system',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'GPS Attendance',
+    title: 'KLE Tech Attendance',
   },
 };
 
@@ -40,7 +40,10 @@ export default function RootLayout({
 
         <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500">
           <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span>© 2026 GPS-Based College Attendance System</span>
+            <span className="flex items-center gap-2">
+              <img src="/logo.png" alt="KLE Tech Logo" className="h-4 w-auto object-contain inline-block" />
+              <span>© 2026 KLE Technological University • GPS Attendance System</span>
+            </span>
             <span className="flex items-center gap-1.5 font-mono text-[11px] text-slate-400">
               <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
               Server Time Verified | Haversine Formula Active

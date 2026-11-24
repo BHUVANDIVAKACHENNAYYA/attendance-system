@@ -78,17 +78,21 @@ export function Navbar() {
           <div className="flex items-center space-x-3">
             <Link
               href={isAdmin ? '/admin/dashboard' : '/student/dashboard'}
-              className="flex items-center gap-2 group"
+              className="flex items-center gap-2.5 group"
             >
-              <div className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-sm group-hover:bg-indigo-700 transition">
-                <Navigation className="w-5 h-5" />
+              <div className="h-10 px-2 py-1 rounded-lg bg-white border border-slate-200 shadow-xs flex items-center justify-center hover:border-indigo-300 transition">
+                <img
+                  src="/logo.png"
+                  alt="KLE Technological University Logo"
+                  className="h-7 w-auto object-contain"
+                />
               </div>
               <div>
-                <span className="font-bold text-slate-900 tracking-tight text-base sm:text-lg block leading-tight">
+                <span className="font-bold text-slate-900 tracking-tight text-sm sm:text-base block leading-tight">
                   GPS Attendance
                 </span>
-                <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider block">
-                  {isAdmin ? 'Admin Portal' : 'Student Portal'}
+                <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider block">
+                  KLE Tech • {isAdmin ? 'Admin Portal' : 'Student Portal'}
                 </span>
               </div>
             </Link>
