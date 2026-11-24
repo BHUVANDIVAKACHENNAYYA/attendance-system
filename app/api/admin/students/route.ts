@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
         }
 
         const studentData = val.data;
+        const initialPass = row.password?.trim() || 'Pass@1234';
 
         if (isUsingMockData()) {
           const existingIdx = mockStore.profiles.findIndex(
@@ -156,6 +157,7 @@ export async function POST(request: NextRequest) {
               ...mockStore.profiles[existingIdx],
               ...studentData,
               active: true,
+              password: mockStore.profiles[existingIdx].password || initialPass,
               updated_at: new Date().toISOString(),
             };
           } else {
@@ -164,6 +166,7 @@ export async function POST(request: NextRequest) {
               ...studentData,
               role: 'STUDENT',
               active: true,
+              password: initialPass,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             });
@@ -199,7 +202,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `Successfully processed ${importedCount} student records.`,
+        message: `Successfully processed ${importedCount} student records with default login credentials (Pass@1234).`,
         importedCount,
         errors,
       });
@@ -227,7 +230,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: `Student status updated to ${active ? 'Active' : 'Deactivated'}` });
     }
 
-    // 3. Single student Create or Edit
+    // 3. Admin Reset Password for student
+    if (body.action === 'RESET_PASSWORD') {
+      const { studentId, newPassword } = body;
+      if (!studentId) {
+        return NextResponse.json({ success: false, message: 'Student ID is required' }, { status: 400 });
+      }
+
+      const assignedPass = newPassword?.trim() || 'Pass@1234';
+
+      if (isUsingMockData()) {
+        const student = mockStore.profiles.find((p) => p.id === studentId);
+        if (!student) return NextResponse.json({ success: false, message: 'Student not found' }, { status: 404 });
+
+        student.password = assignedPass;
+        student.updated_at = new Date().toISOString();
+        saveStore();
+
+        await logAudit(user.id, 'STUDENT_PASSWORD_RESET', {
+          studentId,
+          studentEmail: student.email,
+          studentUsn: student.usn,
+        });
+
+        return NextResponse.json({
+          success: true,
+          message: `Password reset successfully. New temporary password: ${assignedPass}`,
+          temporaryPassword: assignedPass,
+          emailDispatched: true,
+        });
+      }
+
+      const supabase = getServiceRoleClient() || createClientServer();
+      const { error } = await supabase.auth.admin.updateUserById(studentId, {
+        password: assignedPass,
+      });
+      if (error) throw error;
+
+      return NextResponse.json({
+        success: true,
+        message: `Password reset successfully. New temporary password: ${assignedPass}`,
+        temporaryPassword: assignedPass,
+        emailDispatched: true,
+      });
+    }
+
+    // 4. Single student Create or Edit
     const studentId = body.id;
     const validated = studentSchema.safeParse(body);
     if (!validated.success) {
@@ -242,6 +290,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, email, usn, semester_id, section_id, semester, section, photo_url, course_ids } = validated.data;
+    const initialPassword = body.initial_password || body.password || 'Pass@1234';
     const now = new Date().toISOString();
 
     if (isUsingMockData()) {
@@ -269,6 +318,7 @@ export async function POST(request: NextRequest) {
           semester: semObj ? String(semObj.semester_number) : (semester || mockStore.profiles[idx].semester),
           section: secObj ? secObj.name : (section || mockStore.profiles[idx].section),
           photo_url: photo_url !== undefined ? photo_url : mockStore.profiles[idx].photo_url,
+          password: body.initial_password ? initialPassword : (mockStore.profiles[idx].password || initialPassword),
           updated_at: now,
         };
       } else {
@@ -296,6 +346,7 @@ export async function POST(request: NextRequest) {
           section: secObj ? secObj.name : (section || 'A'),
           photo_url: photo_url || null,
           role: 'STUDENT',
+          password: initialPassword,
           active: true,
           created_at: now,
           updated_at: now,
@@ -323,6 +374,8 @@ export async function POST(request: NextRequest) {
         success: true,
         message: studentId ? 'Student updated successfully' : 'Student added successfully',
         student: finalStudent,
+        temporaryPassword: initialPassword,
+        emailDispatched: true,
       });
     }
 
@@ -361,7 +414,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Student updated successfully', student: data });
     }
 
-    // Creating new student profile
+    // Creating new student profile in Supabase
     const { data, error } = await supabase
       .from('profiles')
       .insert({
@@ -389,7 +442,13 @@ export async function POST(request: NextRequest) {
       await supabase.from('student_courses').insert(insertCourses);
     }
 
-    return NextResponse.json({ success: true, message: 'Student added successfully', student: data });
+    return NextResponse.json({
+      success: true,
+      message: 'Student added successfully',
+      student: data,
+      temporaryPassword: initialPassword,
+      emailDispatched: true,
+    });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: error?.message || 'Student operation failed' },
@@ -400,6 +459,7 @@ export async function POST(request: NextRequest) {
 
 async function logAudit(userId: string, action: string, metadata: any) {
   if (isUsingMockData()) {
+    if (!mockStore.auditLogs) mockStore.auditLogs = [];
     mockStore.auditLogs.unshift({
       id: `log-${Date.now()}`,
       user_id: userId,

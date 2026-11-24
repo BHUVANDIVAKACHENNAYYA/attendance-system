@@ -158,11 +158,17 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (found.password && found.password !== password) {
+      const expectedPassword = found.password || 'Pass@1234';
+      if (expectedPassword !== password) {
         return NextResponse.json(
           { success: false, message: 'Invalid password. Please try again.' },
           { status: 401 }
         );
+      }
+
+      if (!found.password) {
+        found.password = 'Pass@1234';
+        saveStore();
       }
 
       const response = NextResponse.json({

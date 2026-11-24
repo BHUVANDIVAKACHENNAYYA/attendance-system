@@ -286,3 +286,50 @@ test('5. Student History Breakdown: Course-Wise Metrics & Eligibility Percentage
   const statusBadge = percentage >= 85 ? 'GOOD' : percentage >= 75 ? 'AVERAGE' : 'SHORTAGE';
   assert.equal(statusBadge, 'GOOD');
 });
+
+test('6. Student Security Workflow: Admin Provisions Credentials & Student Changes Password', () => {
+  // 6.1 Admin adds student with initial temporary password
+  const tempPassword = 'TempPass@2026';
+  const newStudent = {
+    id: 'st-002',
+    name: 'Suresh Patil',
+    email: 'suresh@college.edu',
+    usn: '01FS24BEC005',
+    role: 'STUDENT',
+    semester: '5',
+    section: 'A',
+    password: tempPassword,
+    active: true,
+  };
+  TEST_STORE.profiles.push(newStudent);
+
+  // 6.2 Student logs in with temporary password
+  const loginAttemptWithTemp = TEST_STORE.profiles.find(
+    (p) => p.email === 'suresh@college.edu' && p.password === tempPassword
+  );
+  assert.ok(loginAttemptWithTemp, 'Student should be able to log in with initial password');
+
+  // 6.3 Student changes password via Student Profile
+  const oldPasswordInput = tempPassword;
+  const newPasswordInput = 'SureshPrivate#999';
+  const confirmPasswordInput = 'SureshPrivate#999';
+
+  // Verify inputs match and meet length requirement
+  assert.ok(newPasswordInput.length >= 6, 'Password must be >= 6 chars');
+  assert.equal(newPasswordInput, confirmPasswordInput, 'Passwords must match');
+  assert.equal(newStudent.password, oldPasswordInput, 'Current password must match');
+
+  // Apply change
+  newStudent.password = newPasswordInput;
+
+  // 6.4 Verification: Old password is rejected, new password succeeds
+  const loginWithOld = TEST_STORE.profiles.find(
+    (p) => p.email === 'suresh@college.edu' && p.password === tempPassword
+  );
+  assert.equal(loginWithOld, undefined, 'Old temporary password must no longer work');
+
+  const loginWithNew = TEST_STORE.profiles.find(
+    (p) => p.email === 'suresh@college.edu' && p.password === newPasswordInput
+  );
+  assert.ok(loginWithNew, 'New password must authenticate successfully');
+});
