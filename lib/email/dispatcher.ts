@@ -1,5 +1,6 @@
 import { mockStore, saveStore, isUsingMockData } from '@/lib/supabase/mock-store';
 import { OutgoingEmail } from '@/types';
+import { sendSmtpMail } from './smtp-client';
 
 export interface SendEmailPayload {
   to: string;
@@ -18,6 +19,7 @@ export interface SendEmailResult {
   subject: string;
   bodyText: string;
   mailtoUrl: string;
+  webmailGmailUrl: string;
 }
 
 export function generateCredentialEmailContent(payload: SendEmailPayload) {
@@ -101,15 +103,76 @@ Academic Attendance Department`;
     subject
   )}&body=${encodeURIComponent(bodyText)}`;
 
-  return { subject, bodyText, bodyHtml, mailtoUrl, loginUrl };
+  const webmailGmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+    payload.to
+  )}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+
+  return { subject, bodyText, bodyHtml, mailtoUrl, webmailGmailUrl, loginUrl };
 }
 
 export async function dispatchStudentCredentialEmail(
   payload: SendEmailPayload
 ): Promise<SendEmailResult> {
-  const { subject, bodyText, bodyHtml, mailtoUrl } = generateCredentialEmailContent(payload);
+  const { subject, bodyText, bodyHtml, mailtoUrl, webmailGmailUrl } =
+    generateCredentialEmailContent(payload);
 
-  // 1. Check for Resend API
+  // 1. Check for Direct SMTP Configuration
+  const settings = mockStore.emailSettings;
+  const smtpUser = process.env.SMTP_USER || settings?.smtpUser;
+  const smtpPass = process.env.SMTP_PASS || settings?.smtpPass;
+  const smtpHost = process.env.SMTP_HOST || settings?.smtpHost || 'smtp.gmail.com';
+  const smtpPort = Number(process.env.SMTP_PORT || settings?.smtpPort || 465);
+  const senderName =
+    process.env.SMTP_FROM_NAME || settings?.senderName || 'GPS Attendance System';
+  const senderEmail =
+    process.env.SMTP_FROM_EMAIL || settings?.senderEmail || smtpUser || 'bhuvansondabhvi@gmail.com';
+  const from = `"${senderName}" <${senderEmail}>`;
+
+  if (smtpPass && smtpUser) {
+    try {
+      console.log(`[SMTP] Attempting direct delivery to ${payload.to} via ${smtpHost}:${smtpPort}...`);
+      const smtpRes = await sendSmtpMail({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: { user: smtpUser, pass: smtpPass },
+        from,
+        to: payload.to,
+        subject,
+        text: bodyText,
+        html: bodyHtml,
+      });
+
+      if (smtpRes.success) {
+        recordEmailLog({
+          to: payload.to,
+          student_name: payload.studentName,
+          usn: payload.usn,
+          temporary_password: payload.temporaryPassword,
+          subject,
+          body_text: bodyText,
+          status: 'SENT',
+        });
+
+        return {
+          sent: true,
+          simulated: false,
+          provider: `Direct SMTP (${smtpHost})`,
+          message: `Email successfully delivered to ${payload.to} via Direct SMTP.`,
+          subject,
+          bodyText,
+          mailtoUrl,
+          webmailGmailUrl,
+        };
+      } else {
+        console.warn(`[SMTP] Direct delivery failed: ${smtpRes.error}`);
+      }
+    } catch (err: any) {
+      console.error('[SMTP] Direct delivery exception:', err);
+    }
+  }
+
+  // 2. Check for Resend API
   const resendApiKey = process.env.RESEND_API_KEY;
   const resendFrom = process.env.EMAIL_FROM || 'onboarding@resend.dev';
 
@@ -130,7 +193,6 @@ export async function dispatchStudentCredentialEmail(
         }),
       });
 
-      const resData = await res.json();
       if (res.ok) {
         recordEmailLog({
           to: payload.to,
@@ -150,6 +212,7 @@ export async function dispatchStudentCredentialEmail(
           subject,
           bodyText,
           mailtoUrl,
+          webmailGmailUrl,
         };
       }
     } catch (err: any) {
@@ -157,7 +220,7 @@ export async function dispatchStudentCredentialEmail(
     }
   }
 
-  // 2. Check for SendGrid API
+  // 3. Check for SendGrid API
   const sendgridApiKey = process.env.SENDGRID_API_KEY;
   const sendgridFrom = process.env.EMAIL_FROM || 'attendance@college.edu';
 
@@ -199,6 +262,7 @@ export async function dispatchStudentCredentialEmail(
           subject,
           bodyText,
           mailtoUrl,
+          webmailGmailUrl,
         };
       }
     } catch (err: any) {
@@ -206,8 +270,7 @@ export async function dispatchStudentCredentialEmail(
     }
   }
 
-  // 3. Fallback: Simulation & Local Outbox Log
-  // When no remote SMTP/API key is present, log to local outbox so admin can inspect or send via mailto
+  // 4. Fallback: Log to Outbox with direct mailto / webmail support
   recordEmailLog({
     to: payload.to,
     student_name: payload.studentName,
@@ -216,24 +279,18 @@ export async function dispatchStudentCredentialEmail(
     subject,
     body_text: bodyText,
     status: 'SIMULATED',
-    error_message: 'No SMTP or email API keys configured in .env.local. Stored in outbox.',
+    error_message: 'Direct SMTP password not configured yet. Ready for 1-click dispatch.',
   });
-
-  console.log(`\n======================================================`);
-  console.log(`[EMAIL DISPATCH - SIMULATED]`);
-  console.log(`To: ${payload.to}`);
-  console.log(`Subject: ${subject}`);
-  console.log(`Body:\n${bodyText}`);
-  console.log(`======================================================\n`);
 
   return {
     sent: false,
     simulated: true,
-    provider: 'Local Outbox / Simulated',
-    message: `SMTP server not yet configured. The email content has been prepared and logged to the Outbox. You can also send directly using the 'Open in Email Client' button.`,
+    provider: 'Local Outbox / Ready for 1-Click Send',
+    message: `Email prepared for ${payload.to}. Click 'Direct Send & Close' to deliver credentials.`,
     subject,
     bodyText,
     mailtoUrl,
+    webmailGmailUrl,
   };
 }
 

@@ -11,6 +11,7 @@ import {
   AttendanceRecord,
   AuditLog,
   OutgoingEmail,
+  EmailSettings,
 } from '@/types';
 
 export interface GlobalStore {
@@ -24,6 +25,7 @@ export interface GlobalStore {
   records: AttendanceRecord[];
   auditLogs: AuditLog[];
   outgoingEmails: OutgoingEmail[];
+  emailSettings?: EmailSettings;
 }
 
 const DATA_FILE_PATH = path.join(process.cwd(), 'data', 'attendance-db.json');
@@ -44,6 +46,14 @@ function loadStoreFromFile(): GlobalStore {
         records: Array.isArray(parsed.records) ? parsed.records : [],
         auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [],
         outgoingEmails: Array.isArray(parsed.outgoingEmails) ? parsed.outgoingEmails : [],
+        emailSettings: parsed.emailSettings || {
+          smtpHost: 'smtp.gmail.com',
+          smtpPort: 465,
+          smtpUser: 'bhuvansondabhvi@gmail.com',
+          senderName: 'GPS Attendance System',
+          senderEmail: 'bhuvansondabhvi@gmail.com',
+          directSendEnabled: true,
+        },
       };
     }
   } catch (err) {
@@ -62,6 +72,14 @@ function loadStoreFromFile(): GlobalStore {
     records: [],
     auditLogs: [],
     outgoingEmails: [],
+    emailSettings: {
+      smtpHost: 'smtp.gmail.com',
+      smtpPort: 465,
+      smtpUser: 'bhuvansondabhvi@gmail.com',
+      senderName: 'GPS Attendance System',
+      senderEmail: 'bhuvansondabhvi@gmail.com',
+      directSendEnabled: true,
+    },
   };
 }
 

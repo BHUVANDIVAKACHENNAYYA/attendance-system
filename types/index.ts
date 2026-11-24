@@ -200,3 +200,13 @@ export interface OutgoingEmail {
   error_message?: string | null;
   created_at: string;
 }
+
+export interface EmailSettings {
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPass?: string;
+  senderName: string;
+  senderEmail: string;
+  directSendEnabled: boolean;
+}

@@ -26,6 +26,8 @@ import {
   ExternalLink,
   Send,
   Inbox,
+  Settings,
+  X,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -72,10 +74,38 @@ export default function AdminStudentsPage() {
     usn: string;
     temporaryPassword: string;
     mailtoUrl?: string;
+    webmailGmailUrl?: string;
     sent?: boolean;
     message?: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [directSending, setDirectSending] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Email / SMTP Settings Modal
+  const [emailSettingsModalOpen, setEmailSettingsModalOpen] = useState(false);
+  const [smtpHost, setSmtpHost] = useState('smtp.gmail.com');
+  const [smtpPort, setSmtpPort] = useState('465');
+  const [smtpUser, setSmtpUser] = useState('bhuvansondabhvi@gmail.com');
+  const [smtpPass, setSmtpPass] = useState('');
+  const [senderName, setSenderName] = useState('GPS Attendance System');
+  const [senderEmail, setSenderEmail] = useState('bhuvansondabhvi@gmail.com');
+  const [smtpPassConfigured, setSmtpPassConfigured] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
+  const [testRecipient, setTestRecipient] = useState('');
+  const [testResultMsg, setTestResultMsg] = useState<string | null>(null);
+  const [testingSmtp, setTestingSmtp] = useState(false);
+
+  // Auto-close modal when credentials have already been delivered directly via background SMTP
+  useEffect(() => {
+    if (issuedData?.sent) {
+      const timer = setTimeout(() => {
+        setIssuedData(null);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [issuedData]);
 
   // Reset Password Modal
   const [resetModalStudent, setResetModalStudent] = useState<any | null>(null);
@@ -97,6 +127,7 @@ export default function AdminStudentsPage() {
 
   useEffect(() => {
     loadAllData();
+    loadEmailSettings();
   }, []);
 
   const loadAllData = async () => {
@@ -271,15 +302,22 @@ export default function AdminStudentsPage() {
         loadAllData();
         if (!editingId) {
           // Show credential issue slip modal for new students
+          const isSent = Boolean(data.emailDispatch?.sent);
           setIssuedData({
             name: name.trim(),
             email: email.trim(),
             usn: usn.trim(),
             temporaryPassword: data.temporaryPassword || initialPassword || 'Pass@1234',
             mailtoUrl: data.emailDispatch?.mailtoUrl || `mailto:${email.trim()}?subject=${encodeURIComponent('Your GPS Student Attendance Portal Credentials')}&body=${encodeURIComponent(`Dear ${name.trim()},\n\nYour student account has been registered.\nLogin Email: ${email.trim()}\nUSN: ${usn.trim()}\nTemporary Password: ${data.temporaryPassword || initialPassword || 'Pass@1234'}\n\nPlease sign in at http://localhost:3000/login`)}`,
-            sent: data.emailDispatch?.sent || false,
+            webmailGmailUrl: data.emailDispatch?.webmailGmailUrl,
+            sent: isSent,
             message: data.emailDispatch?.message || '',
           });
+
+          if (isSent) {
+            setToastMessage(`✓ Account created & email directly delivered to ${email.trim()}!`);
+            setTimeout(() => setToastMessage(null), 4000);
+          }
         }
       } else {
         setFormError(data.message || 'Failed to save student.');
@@ -416,6 +454,166 @@ Login URL:          ${portalUrl}
     }
   };
 
+  const loadEmailSettings = async () => {
+    try {
+      const res = await fetch('/api/admin/email-settings');
+      const data = await res.json();
+      if (data.success && data.settings) {
+        setSmtpHost(data.settings.smtpHost || 'smtp.gmail.com');
+        setSmtpPort(String(data.settings.smtpPort || 465));
+        setSmtpUser(data.settings.smtpUser || 'bhuvansondabhvi@gmail.com');
+        setSenderName(data.settings.senderName || 'GPS Attendance System');
+        setSenderEmail(data.settings.senderEmail || 'bhuvansondabhvi@gmail.com');
+        setSmtpPassConfigured(Boolean(data.settings.smtpPassConfigured));
+      }
+    } catch (err) {
+      console.error('Failed to load email settings:', err);
+    }
+  };
+
+  const handleSaveEmailSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSettingsLoading(true);
+    setSettingsMessage(null);
+    try {
+      const res = await fetch('/api/admin/email-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          smtpHost,
+          smtpPort: Number(smtpPort),
+          smtpUser,
+          smtpPass,
+          senderName,
+          senderEmail,
+          directSendEnabled: true,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSettingsMessage('Settings saved successfully!');
+        setSmtpPassConfigured(true);
+        setTimeout(() => {
+          setEmailSettingsModalOpen(false);
+          setSettingsMessage(null);
+        }, 1500);
+      } else {
+        setSettingsMessage(data.error || 'Failed to save settings');
+      }
+    } catch {
+      setSettingsMessage('Network error saving settings');
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const handleTestSmtp = async () => {
+    if (!testRecipient) {
+      setTestResultMsg('Please enter a recipient email to send the test.');
+      return;
+    }
+    setTestingSmtp(true);
+    setTestResultMsg(null);
+    try {
+      const res = await fetch('/api/admin/email-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          smtpHost,
+          smtpPort: Number(smtpPort),
+          smtpUser,
+          smtpPass,
+          senderName,
+          senderEmail,
+          testRecipient,
+        }),
+      });
+      const data = await res.json();
+      if (data.testResult?.success) {
+        setTestResultMsg(`✓ Test email delivered directly to ${testRecipient}!`);
+      } else {
+        setTestResultMsg(`Failed: ${data.testResult?.error || data.error || 'Could not connect to SMTP'}`);
+      }
+    } catch {
+      setTestResultMsg('Network error testing SMTP');
+    } finally {
+      setTestingSmtp(false);
+    }
+  };
+
+  const handleDirectSendAndClose = async () => {
+    if (!issuedData) return;
+    setDirectSending(true);
+
+    try {
+      const res = await fetch('/api/admin/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: issuedData.email,
+          studentName: issuedData.name,
+          usn: issuedData.usn,
+          temporaryPassword: issuedData.temporaryPassword,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.result?.sent) {
+        setToastMessage(`✓ Email directly sent to ${issuedData.email}!`);
+      } else {
+        // If direct SMTP is not yet configured, trigger Gmail web or default client so student gets it without delay
+        const gmailUrl = issuedData.webmailGmailUrl || data.result?.webmailGmailUrl;
+        if (gmailUrl) {
+          window.open(gmailUrl, '_blank');
+        } else if (issuedData.mailtoUrl) {
+          window.location.href = issuedData.mailtoUrl;
+        }
+        setToastMessage(`Dispatched credentials for ${issuedData.email}`);
+      }
+    } catch {
+      if (issuedData.mailtoUrl) {
+        window.location.href = issuedData.mailtoUrl;
+      }
+      setToastMessage(`Dispatched credentials for ${issuedData.email}`);
+    } finally {
+      setDirectSending(false);
+      // ALWAYS immediately close popup modal!
+      setIssuedData(null);
+      loadAllData();
+      setTimeout(() => setToastMessage(null), 4000);
+    }
+  };
+
+  const handleResendFromOutbox = async (emailItem: any) => {
+    try {
+      const res = await fetch('/api/admin/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: emailItem.to,
+          studentName: emailItem.student_name,
+          usn: emailItem.usn,
+          temporaryPassword: emailItem.temporary_password,
+        }),
+      });
+      const data = await res.json();
+      if (data.result?.sent) {
+        setToastMessage(`✓ Sent email directly to ${emailItem.to}`);
+      } else {
+        if (data.result?.webmailGmailUrl) {
+          window.open(data.result.webmailGmailUrl, '_blank');
+        } else {
+          window.location.href = data.result?.mailtoUrl || `mailto:${emailItem.to}`;
+        }
+        setToastMessage(`Dispatched credentials for ${emailItem.to}`);
+      }
+      loadAllData();
+      setTimeout(() => setToastMessage(null), 4000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const filteredStudents = students.filter((st) => {
     if (filterSemester !== 'ALL') {
       const sSemId = st.semester_id || (semesters.find((s) => String(s.semester_number) === st.semester)?.id);
@@ -441,6 +639,20 @@ Login URL:          ${portalUrl}
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2.5 border border-slate-700 animate-in fade-in slide-in-from-top-4">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="ml-2 text-slate-400 hover:text-white transition"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -454,6 +666,19 @@ Login URL:          ${portalUrl}
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              loadEmailSettings();
+              setEmailSettingsModalOpen(true);
+            }}
+            className="gap-1.5 text-xs bg-white"
+          >
+            <Settings className="w-3.5 h-3.5 text-indigo-600" />
+            SMTP Settings
+          </Button>
+
           <Button
             size="sm"
             variant="outline"
@@ -902,7 +1127,15 @@ Login URL:          ${portalUrl}
       {/* Modal: Student Credentials Issued Slip */}
       {issuedData && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4 relative">
+            <button
+              onClick={() => setIssuedData(null)}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+              title="Close Popup"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200">
                 <CheckCircle2 className="w-6 h-6" />
@@ -919,16 +1152,17 @@ Login URL:          ${portalUrl}
                 <div>
                   <strong className="block font-semibold">Email Delivered to Student</strong>
                   <span>{issuedData.message || `Credentials successfully dispatched to ${issuedData.email}.`}</span>
+                  <span className="block text-[10px] text-emerald-600 mt-1">Auto-closing popup in 2 seconds...</span>
                 </div>
               </div>
             ) : (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1.5">
-                <div className="flex items-center gap-1.5 font-semibold text-amber-800">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                  Live SMTP Not Configured Yet
+              <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl text-xs text-indigo-900 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-semibold text-indigo-800">
+                  <Send className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  Direct Send & Auto-Close
                 </div>
-                <p className="text-[11px] text-amber-800 leading-relaxed">
-                  The application is running in local mode without SMTP / email API keys configured in <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">.env.local</code>. Click below to <strong>send the email directly using your email app (Gmail/Outlook)</strong> with 1 click, or copy credentials.
+                <p className="text-[11px] text-indigo-700 leading-relaxed">
+                  Click <strong>Direct Send & Close Popup</strong> to dispatch student credentials to <strong>{issuedData.email}</strong> and immediately dismiss this window.
                 </p>
               </div>
             )}
@@ -955,18 +1189,71 @@ Login URL:          ${portalUrl}
             </div>
 
             <div className="space-y-2 pt-1">
-              <a
-                href={issuedData.mailtoUrl || `mailto:${issuedData.email}`}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition"
+              {/* Primary Direct Send & Close Button */}
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleDirectSendAndClose}
+                disabled={directSending}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center justify-center gap-2"
               >
-                <Send className="w-3.5 h-3.5" />
-                Send Email via Email App (Gmail / Outlook)
-                <ExternalLink className="w-3 h-3 opacity-70" />
-              </a>
+                {directSending ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Sending & Closing...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    Direct Send & Close Popup
+                  </>
+                )}
+              </Button>
 
-              <div className="flex items-center gap-2">
+              {/* Webmail / Client Fallback Send Buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const gmailUrl =
+                      issuedData.webmailGmailUrl ||
+                      `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+                        issuedData.email
+                      )}&su=${encodeURIComponent(
+                        `Your GPS Student Attendance Portal Credentials - ${issuedData.name}`
+                      )}&body=${encodeURIComponent(
+                        `Dear ${issuedData.name},\n\nYour attendance portal credentials:\nEmail: ${issuedData.email}\nUSN: ${issuedData.usn}\nPassword: ${issuedData.temporaryPassword}\nLogin: http://localhost:3000/login`
+                      )}`;
+                    window.open(gmailUrl, '_blank');
+                    setIssuedData(null); // Instantly close popup!
+                    setToastMessage(`Opened Gmail compose & closed popup for ${issuedData.name}`);
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-semibold transition"
+                  title="Send via Web Gmail in browser & close popup"
+                >
+                  <Mail className="w-3 h-3 text-red-500" />
+                  Gmail Web & Close
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (issuedData.mailtoUrl) {
+                      window.location.href = issuedData.mailtoUrl;
+                    }
+                    setIssuedData(null); // Instantly close popup!
+                    setToastMessage(`Triggered email client & closed popup for ${issuedData.name}`);
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-semibold transition"
+                  title="Send via default desktop mail & close popup"
+                >
+                  <ExternalLink className="w-3 h-3 text-indigo-500" />
+                  Email App & Close
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
                 <Button
                   type="button"
                   variant="outline"
@@ -974,17 +1261,21 @@ Login URL:          ${portalUrl}
                   onClick={handleCopyCredentials}
                   className="flex-1 text-xs gap-1.5"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-slate-600" />
+                  )}
                   {copied ? 'Copied to Clipboard!' : 'Copy Credentials'}
                 </Button>
                 <Button
                   type="button"
-                  variant="primary"
+                  variant="ghost"
                   size="sm"
                   onClick={() => setIssuedData(null)}
-                  className="text-xs"
+                  className="text-xs text-slate-600 hover:text-slate-900"
                 >
-                  Done
+                  Close
                 </Button>
               </div>
             </div>
@@ -1014,10 +1305,24 @@ Login URL:          ${portalUrl}
             </div>
 
             {/* SMTP Guide Banner */}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 space-y-1">
-              <strong className="block text-slate-800">Automatic SMTP Configuration:</strong>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 space-y-2">
+              <div className="flex items-center justify-between">
+                <strong className="text-slate-800">Direct SMTP Dispatch Configuration:</strong>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setOutboxModalOpen(false);
+                    setEmailSettingsModalOpen(true);
+                  }}
+                  className="text-[11px] h-7 gap-1"
+                >
+                  <Settings className="w-3 h-3 text-indigo-600" />
+                  Configure SMTP
+                </Button>
+              </div>
               <p className="text-[11px] text-slate-500 leading-relaxed">
-                To send emails automatically from the server, add <code className="bg-slate-200 px-1 py-0.5 rounded text-indigo-700 font-mono">RESEND_API_KEY</code> or <code className="bg-slate-200 px-1 py-0.5 rounded text-indigo-700 font-mono">SENDGRID_API_KEY</code> in <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800 font-mono">.env.local</code>. You can also click <strong>&quot;Send via Email App&quot;</strong> on any entry below to send it immediately via your local email client (Gmail / Outlook).
+                Connect your Gmail or SMTP host under <strong>SMTP Settings</strong> to deliver credentials automatically to students upon account registration. You can also click <strong>&quot;Direct Send&quot;</strong> on any entry below to deliver credentials with 1 click.
               </p>
             </div>
 
@@ -1061,15 +1366,23 @@ Login URL:          ${portalUrl}
                       </div>
 
                       <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleResendFromOutbox(emailItem)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-semibold transition shadow-xs"
+                          title="Deliver directly to student inbox"
+                        >
+                          <Send className="w-3 h-3" />
+                          Direct Send
+                        </button>
                         <a
                           href={mailtoUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded text-[11px] font-semibold transition"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded text-[11px] font-semibold transition"
                         >
-                          <Send className="w-3 h-3" />
-                          Send via Email App
                           <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+                          Email App
                         </a>
                         <button
                           type="button"
@@ -1087,6 +1400,164 @@ Login URL:          ${portalUrl}
                 })
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Email & SMTP Settings */}
+      {emailSettingsModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Settings className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Email & Direct SMTP Settings</h3>
+                  <p className="text-xs text-slate-500">
+                    Configure automated credential delivery via Gmail or custom SMTP
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEmailSettingsModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {settingsMessage && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs">
+                {settingsMessage}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEmailSettings} className="space-y-3.5 text-xs">
+              <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-lg text-indigo-900 text-xs space-y-1">
+                <strong className="block font-semibold">Gmail Direct SMTP Setup:</strong>
+                <p className="text-[11px] text-indigo-800 leading-relaxed">
+                  To send credentials directly from your Gmail account without opening external apps, generate a 16-character <strong>App Password</strong> at:
+                  <a
+                    href="https://myaccount.google.com/apppasswords"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-1 text-indigo-600 underline font-semibold inline-flex items-center gap-0.5"
+                  >
+                    Google App Passwords <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">SMTP Host</label>
+                  <Input
+                    value={smtpHost}
+                    onChange={(e) => setSmtpHost(e.target.value)}
+                    placeholder="smtp.gmail.com"
+                    className="text-xs"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">SMTP Port</label>
+                  <Input
+                    value={smtpPort}
+                    onChange={(e) => setSmtpPort(e.target.value)}
+                    placeholder="465"
+                    className="text-xs"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Sender Email / Username</label>
+                  <Input
+                    value={smtpUser}
+                    onChange={(e) => {
+                      setSmtpUser(e.target.value);
+                      setSenderEmail(e.target.value);
+                    }}
+                    placeholder="bhuvansondabhvi@gmail.com"
+                    className="text-xs"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Google App Password (16 chars)
+                  </label>
+                  <Input
+                    type="password"
+                    value={smtpPass}
+                    onChange={(e) => setSmtpPass(e.target.value)}
+                    placeholder={smtpPassConfigured ? '•••••••••••••••• (Configured)' : 'Enter 16-char app password'}
+                    className="text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Sender Display Name</label>
+                <Input
+                  value={senderName}
+                  onChange={(e) => setSenderName(e.target.value)}
+                  placeholder="GPS Attendance Management"
+                  className="text-xs"
+                />
+              </div>
+
+              {/* Test Email Section */}
+              <div className="pt-2 border-t border-slate-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-slate-700">Test SMTP Delivery</label>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    type="email"
+                    value={testRecipient}
+                    onChange={(e) => setTestRecipient(e.target.value)}
+                    placeholder="Enter email to test (e.g. 01fs24bec003@kletech.ac.in)"
+                    className="text-xs flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTestSmtp}
+                    disabled={testingSmtp}
+                    className="text-xs shrink-0"
+                  >
+                    {testingSmtp ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Send className="w-3.5 h-3.5 mr-1 text-indigo-600" />}
+                    Send Test
+                  </Button>
+                </div>
+                {testResultMsg && (
+                  <p className={`text-[11px] ${testResultMsg.startsWith('✓') ? 'text-emerald-700' : 'text-rose-600'}`}>
+                    {testResultMsg}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEmailSettingsModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" variant="primary" size="sm" disabled={settingsLoading}>
+                  {settingsLoading && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+                  Save Email Settings
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
