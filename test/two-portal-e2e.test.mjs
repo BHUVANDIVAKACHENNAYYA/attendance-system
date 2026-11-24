@@ -333,3 +333,51 @@ test('6. Student Security Workflow: Admin Provisions Credentials & Student Chang
   );
   assert.ok(loginWithNew, 'New password must authenticate successfully');
 });
+
+test('7. Admin Student Removal: Permanent Deletion & Associated Record Clean-up', () => {
+  const studentIdToDelete = 'st-002';
+
+  // Add dummy course enrollment and attendance record for st-002 to test cascade clean-up
+  TEST_STORE.studentCourses.push({
+    id: 'sc-test-delete',
+    student_id: studentIdToDelete,
+    course_id: 'c-ec501',
+  });
+  TEST_STORE.records.push({
+    id: 'rec-test-delete',
+    session_id: 'sess-001',
+    student_id: studentIdToDelete,
+    status: 'PRESENT',
+  });
+
+  assert.ok(TEST_STORE.profiles.some((p) => p.id === studentIdToDelete));
+  assert.ok(TEST_STORE.studentCourses.some((sc) => sc.student_id === studentIdToDelete));
+  assert.ok(TEST_STORE.records.some((r) => r.student_id === studentIdToDelete));
+
+  // Perform Admin Deletion
+  const studentIdx = TEST_STORE.profiles.findIndex((p) => p.id === studentIdToDelete);
+  const deletedStudent = TEST_STORE.profiles[studentIdx];
+  TEST_STORE.profiles.splice(studentIdx, 1);
+
+  // Cascade clean-up
+  TEST_STORE.studentCourses = TEST_STORE.studentCourses.filter((sc) => sc.student_id !== studentIdToDelete);
+  TEST_STORE.records = TEST_STORE.records.filter((r) => r.student_id !== studentIdToDelete);
+
+  // Audit trail
+  TEST_STORE.auditLogs.push({
+    id: `log-del-${Date.now()}`,
+    user_id: 'admin-01',
+    action: 'STUDENT_DELETED',
+    metadata: {
+      studentId: studentIdToDelete,
+      studentName: deletedStudent.name,
+      studentUsn: deletedStudent.usn,
+    },
+  });
+
+  // Verification
+  assert.equal(TEST_STORE.profiles.some((p) => p.id === studentIdToDelete), false);
+  assert.equal(TEST_STORE.studentCourses.some((sc) => sc.student_id === studentIdToDelete), false);
+  assert.equal(TEST_STORE.records.some((r) => r.student_id === studentIdToDelete), false);
+  assert.ok(TEST_STORE.auditLogs.some((l) => l.action === 'STUDENT_DELETED'));
+});

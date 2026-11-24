@@ -230,6 +230,55 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: `Student status updated to ${active ? 'Active' : 'Deactivated'}` });
     }
 
+    // 2.5 Delete student action
+    if (body.action === 'DELETE') {
+      const studentId = body.studentId || body.id;
+      if (!studentId) {
+        return NextResponse.json({ success: false, message: 'Student ID is required' }, { status: 400 });
+      }
+
+      if (isUsingMockData()) {
+        const studentIdx = mockStore.profiles.findIndex((p) => p.id === studentId);
+        if (studentIdx === -1) {
+          return NextResponse.json({ success: false, message: 'Student not found' }, { status: 404 });
+        }
+        const student = mockStore.profiles[studentIdx];
+        mockStore.profiles.splice(studentIdx, 1);
+
+        if (mockStore.studentCourses) {
+          mockStore.studentCourses = mockStore.studentCourses.filter((sc) => sc.student_id !== studentId);
+        }
+        if (mockStore.records) {
+          mockStore.records = mockStore.records.filter((r) => r.student_id !== studentId);
+        }
+
+        await logAudit(user.id, 'STUDENT_DELETED', {
+          studentId,
+          studentName: student.name,
+          studentEmail: student.email,
+          studentUsn: student.usn,
+        });
+
+        saveStore();
+
+        return NextResponse.json({
+          success: true,
+          message: `Student "${student.name}" (${student.usn}) was permanently removed.`,
+        });
+      }
+
+      const supabase = getServiceRoleClient() || createClientServer();
+      await supabase.from('student_courses').delete().eq('student_id', studentId);
+      await supabase.from('attendance_records').delete().eq('student_id', studentId);
+      const { error } = await supabase.from('profiles').delete().eq('id', studentId);
+      if (error) throw error;
+
+      return NextResponse.json({
+        success: true,
+        message: 'Student permanently deleted successfully.',
+      });
+    }
+
     // 3. Admin Reset Password for student
     if (body.action === 'RESET_PASSWORD') {
       const { studentId, newPassword } = body;
@@ -452,6 +501,68 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     return NextResponse.json(
       { success: false, message: error?.message || 'Student operation failed' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await getAuthenticatedUser(request);
+    if (!user || user.role !== 'ADMIN') {
+      return NextResponse.json({ success: false, message: 'Admin access required' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const studentId = searchParams.get('studentId') || searchParams.get('id');
+
+    if (!studentId) {
+      return NextResponse.json({ success: false, message: 'Student ID is required' }, { status: 400 });
+    }
+
+    if (isUsingMockData()) {
+      const studentIdx = mockStore.profiles.findIndex((p) => p.id === studentId);
+      if (studentIdx === -1) {
+        return NextResponse.json({ success: false, message: 'Student not found' }, { status: 404 });
+      }
+      const student = mockStore.profiles[studentIdx];
+      mockStore.profiles.splice(studentIdx, 1);
+
+      if (mockStore.studentCourses) {
+        mockStore.studentCourses = mockStore.studentCourses.filter((sc) => sc.student_id !== studentId);
+      }
+      if (mockStore.records) {
+        mockStore.records = mockStore.records.filter((r) => r.student_id !== studentId);
+      }
+
+      await logAudit(user.id, 'STUDENT_DELETED', {
+        studentId,
+        studentName: student.name,
+        studentEmail: student.email,
+        studentUsn: student.usn,
+      });
+
+      saveStore();
+
+      return NextResponse.json({
+        success: true,
+        message: `Student "${student.name}" (${student.usn}) was permanently removed.`,
+      });
+    }
+
+    const supabase = getServiceRoleClient() || createClientServer();
+    await supabase.from('student_courses').delete().eq('student_id', studentId);
+    await supabase.from('attendance_records').delete().eq('student_id', studentId);
+    const { error } = await supabase.from('profiles').delete().eq('id', studentId);
+    if (error) throw error;
+
+    return NextResponse.json({
+      success: true,
+      message: 'Student permanently deleted successfully.',
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, message: error?.message || 'Failed to delete student' },
       { status: 500 }
     );
   }

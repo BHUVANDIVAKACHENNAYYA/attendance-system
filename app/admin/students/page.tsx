@@ -73,6 +73,11 @@ export default function AdminStudentsPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
 
+  // Delete Student Modal
+  const [deleteModalStudent, setDeleteModalStudent] = useState<any | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // CSV import
@@ -320,6 +325,29 @@ Login URL:          ${portalUrl}
       setResetMessage('Network error resetting password');
     } finally {
       setResetLoading(false);
+    }
+  };
+
+  const handleDeleteStudentSubmit = async () => {
+    if (!deleteModalStudent) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+
+    try {
+      const res = await fetch(`/api/admin/students?studentId=${deleteModalStudent.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setDeleteModalStudent(null);
+        loadAllData();
+      } else {
+        setDeleteError(data.message || 'Failed to remove student');
+      }
+    } catch {
+      setDeleteError('Network error while removing student');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -595,6 +623,17 @@ Login URL:          ${portalUrl}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           Edit
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setDeleteModalStudent(st);
+                            setDeleteError(null);
+                          }}
+                          className="inline-flex items-center gap-1 p-1.5 text-xs text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                          title="Delete Student"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -959,6 +998,79 @@ Login URL:          ${portalUrl}
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Delete Student Confirmation */}
+      {deleteModalStudent && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-150 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-200">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Remove Student</h3>
+                <p className="text-xs text-slate-500">Permanently delete student account</p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {deleteError}
+              </div>
+            )}
+
+            <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-2 text-xs">
+              <div className="flex justify-between py-1 border-b border-slate-200">
+                <span className="text-slate-500">Student Name:</span>
+                <span className="font-bold text-slate-800">{deleteModalStudent.name}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200">
+                <span className="text-slate-500">USN:</span>
+                <span className="font-mono font-bold text-slate-800">{deleteModalStudent.usn || '--'}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-200">
+                <span className="text-slate-500">Email:</span>
+                <span className="font-mono text-indigo-600">{deleteModalStudent.email}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-slate-500">Semester & Section:</span>
+                <span className="font-semibold text-slate-700">
+                  {deleteModalStudent.semester_info?.name || `Sem ${deleteModalStudent.semester || '5'}`} &bull; Sec {deleteModalStudent.section_info?.name || deleteModalStudent.section || 'A'}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-rose-600 bg-rose-50 p-3 rounded-lg border border-rose-200 leading-relaxed">
+              <strong>Warning:</strong> This will permanently delete this student, revoke their login access, remove course enrollments, and erase associated attendance records. This action cannot be undone.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={deleteLoading}
+                onClick={() => setDeleteModalStudent(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                disabled={deleteLoading}
+                onClick={handleDeleteStudentSubmit}
+                className="gap-1.5"
+              >
+                {deleteLoading && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />}
+                <Trash2 className="w-3.5 h-3.5" />
+                Permanently Delete
+              </Button>
+            </div>
           </div>
         </div>
       )}
