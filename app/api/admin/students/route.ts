@@ -10,6 +10,42 @@ import { Profile, StudentCourse } from '@/types';
 import Papa from 'papaparse';
 import { dispatchStudentCredentialEmail } from '@/lib/email/dispatcher';
 
+async function uploadStudentPhotoToStorage(
+  supabase: any,
+  studentId: string,
+  photoDataUrl: string
+): Promise<string | null> {
+  if (!photoDataUrl || !photoDataUrl.startsWith('data:image/')) {
+    return photoDataUrl || null;
+  }
+  try {
+    const parts = photoDataUrl.split(',');
+    const match = parts[0].match(/:(.*?);/);
+    const mime = match ? match[1] : 'image/jpeg';
+    const ext = mime.split('/')[1] || 'jpg';
+    const buffer = Buffer.from(parts[1], 'base64');
+    const path = `${studentId}-${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('student-photos')
+      .upload(path, buffer, {
+        contentType: mime,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.warn('Student photo upload warning:', uploadError.message);
+      return photoDataUrl;
+    }
+
+    const { data } = supabase.storage.from('student-photos').getPublicUrl(path);
+    return data?.publicUrl || photoDataUrl;
+  } catch (err) {
+    console.warn('Failed to upload photo to storage, storing data URL fallback:', err);
+    return photoDataUrl;
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthenticatedUser(request);
@@ -181,20 +217,54 @@ export async function POST(request: NextRequest) {
           importedCount++;
         } else {
           const supabase = getServiceRoleClient() || createClientServer();
-          await supabase.from('profiles').upsert(
-            {
+          let studentUserId: string | null = null;
+          const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+            email: studentData.email.toLowerCase(),
+            password: initialPass,
+            email_confirm: true,
+            user_metadata: {
               name: studentData.name,
-              email: studentData.email,
+              role: 'STUDENT',
               usn: studentData.usn,
               semester: studentData.semester,
               section: studentData.section,
-              photo_url: studentData.photo_url,
-              role: 'STUDENT',
-              active: true,
             },
-            { onConflict: 'email' }
-          );
-          importedCount++;
+          });
+
+          if (authData?.user?.id) {
+            studentUserId = authData.user.id;
+          } else {
+            const { data: existingUser } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('email', studentData.email.toLowerCase())
+              .maybeSingle();
+            if (existingUser?.id) {
+              studentUserId = existingUser.id;
+            } else {
+              errors.push(`Row ${i + 1} (${studentData.name}): ${authError?.message || 'Failed to create student account'}`);
+              continue;
+            }
+          }
+
+          if (studentUserId) {
+            await supabase.from('profiles').upsert(
+              {
+                id: studentUserId,
+                name: studentData.name,
+                email: studentData.email.toLowerCase(),
+                usn: studentData.usn,
+                semester: studentData.semester,
+                section: studentData.section,
+                photo_url: studentData.photo_url || null,
+                role: 'STUDENT',
+                active: true,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'id' }
+            );
+            importedCount++;
+          }
         }
       }
 
@@ -279,6 +349,11 @@ export async function POST(request: NextRequest) {
       await supabase.from('attendance_records').delete().eq('student_id', studentId);
       const { error } = await supabase.from('profiles').delete().eq('id', studentId);
       if (error) throw error;
+      try {
+        await supabase.auth.admin.deleteUser(studentId);
+      } catch (authDelErr) {
+        console.warn('Auth user cleanup warning:', authDelErr);
+      }
 
       return NextResponse.json({
         success: true,
@@ -454,17 +529,22 @@ export async function POST(request: NextRequest) {
 
     const supabase = getServiceRoleClient() || createClientServer();
     if (studentId) {
+      let finalPhotoUrl = photo_url;
+      if (photo_url && photo_url.startsWith('data:image/')) {
+        finalPhotoUrl = await uploadStudentPhotoToStorage(supabase, studentId, photo_url);
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .update({
           name,
-          email,
-          usn,
-          semester_id,
-          section_id,
-          semester,
-          section,
-          photo_url,
+          email: email.trim().toLowerCase(),
+          usn: usn.trim(),
+          semester_id: semester_id || null,
+          section_id: section_id || null,
+          semester: semester || '5',
+          section: section || 'A',
+          photo_url: finalPhotoUrl || null,
           updated_at: now,
         })
         .eq('id', studentId)
@@ -487,29 +567,79 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Student updated successfully', student: data });
     }
 
-    // Creating new student profile in Supabase
-    const { data, error } = await supabase
+    // Creating new student in Supabase
+    // 1. Check duplicate USN or Email in profiles
+    const { data: existingProfiles } = await supabase
       .from('profiles')
-      .insert({
-        name,
-        email,
-        usn,
-        semester_id,
-        section_id,
-        semester,
-        section,
-        photo_url,
+      .select('id, email, usn')
+      .or(`email.eq.${email.trim().toLowerCase()},usn.eq.${usn.trim()}`);
+
+    if (existingProfiles && existingProfiles.length > 0) {
+      const match = existingProfiles[0];
+      const field = match.email.toLowerCase() === email.trim().toLowerCase() ? 'Email' : 'USN';
+      return NextResponse.json(
+        { success: false, message: `A student with this ${field} already exists.` },
+        { status: 409 }
+      );
+    }
+
+    // 2. Create student account in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: email.trim().toLowerCase(),
+      password: initialPassword,
+      email_confirm: true,
+      user_metadata: {
+        name: name.trim(),
+        role: 'STUDENT',
+        usn: usn.trim(),
+        semester: semester || '5',
+        section: section || 'A',
+        semester_id: semester_id || null,
+        section_id: section_id || null,
+      },
+    });
+
+    if (authError || !authData?.user) {
+      return NextResponse.json(
+        { success: false, message: authError?.message || 'Failed to create student authentication account' },
+        { status: 400 }
+      );
+    }
+
+    const newStudentId = authData.user.id;
+
+    // 3. Upload photo to Supabase storage if provided
+    let finalPhotoUrl = photo_url;
+    if (photo_url && photo_url.startsWith('data:image/')) {
+      finalPhotoUrl = await uploadStudentPhotoToStorage(supabase, newStudentId, photo_url);
+    }
+
+    // 4. Ensure profile in public.profiles is fully populated
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: newStudentId,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        usn: usn.trim(),
+        semester_id: semester_id || null,
+        section_id: section_id || null,
+        semester: semester || '5',
+        section: section || 'A',
+        photo_url: finalPhotoUrl || null,
         role: 'STUDENT',
         active: true,
+        updated_at: now,
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (profileError) throw profileError;
 
+    // 5. Enroll in courses
     if (Array.isArray(course_ids) && course_ids.length > 0) {
       const insertCourses = course_ids.map((cid) => ({
-        student_id: data.id,
+        student_id: newStudentId,
         course_id: cid,
       }));
       await supabase.from('student_courses').insert(insertCourses);
@@ -527,7 +657,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Student added successfully',
-      student: data,
+      student: profileData,
       temporaryPassword: initialPassword,
       emailDispatch,
     });
@@ -588,6 +718,11 @@ export async function DELETE(request: NextRequest) {
     await supabase.from('attendance_records').delete().eq('student_id', studentId);
     const { error } = await supabase.from('profiles').delete().eq('id', studentId);
     if (error) throw error;
+    try {
+      await supabase.auth.admin.deleteUser(studentId);
+    } catch (authDelErr) {
+      console.warn('Auth user cleanup warning:', authDelErr);
+    }
 
     return NextResponse.json({
       success: true,

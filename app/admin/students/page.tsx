@@ -303,16 +303,17 @@ export default function AdminStudentsPage() {
         if (!editingId) {
           // Show credential issue slip modal for new students
           const isSent = Boolean(data.emailDispatch?.sent);
-          setIssuedData({
-            name: name.trim(),
-            email: email.trim(),
-            usn: usn.trim(),
-            temporaryPassword: data.temporaryPassword || initialPassword || 'Pass@1234',
-            mailtoUrl: data.emailDispatch?.mailtoUrl || `mailto:${email.trim()}?subject=${encodeURIComponent('Your GPS Student Attendance Portal Credentials')}&body=${encodeURIComponent(`Dear ${name.trim()},\n\nYour student account has been registered.\nLogin Email: ${email.trim()}\nUSN: ${usn.trim()}\nTemporary Password: ${data.temporaryPassword || initialPassword || 'Pass@1234'}\n\nPlease sign in at http://localhost:3000/login`)}`,
-            webmailGmailUrl: data.emailDispatch?.webmailGmailUrl,
-            sent: isSent,
-            message: data.emailDispatch?.message || '',
-          });
+            const loginLink = typeof window !== 'undefined' ? `${window.location.origin}/login` : 'https://attendance-system-emj.pages.dev/login';
+            setIssuedData({
+              name: name.trim(),
+              email: email.trim(),
+              usn: usn.trim(),
+              temporaryPassword: data.temporaryPassword || initialPassword || 'Pass@1234',
+              mailtoUrl: data.emailDispatch?.mailtoUrl || `mailto:${email.trim()}?subject=${encodeURIComponent('Your GPS Student Attendance Portal Credentials')}&body=${encodeURIComponent(`Dear ${name.trim()},\n\nYour student account has been registered.\nLogin Email: ${email.trim()}\nUSN: ${usn.trim()}\nTemporary Password: ${data.temporaryPassword || initialPassword || 'Pass@1234'}\n\nPlease sign in at ${loginLink}`)}`,
+              webmailGmailUrl: data.emailDispatch?.webmailGmailUrl,
+              sent: isSent,
+              message: data.emailDispatch?.message || '',
+            });
 
           if (isSent) {
             setToastMessage(`✓ Account created & email directly delivered to ${email.trim()}!`);
